@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="A lightweight, privacy-focused breathing tool for calmspaces.">
+    <meta name="theme-color" content="#0f172a">
+    <title>CalmBreath</title>
+    <style>
+        :root {
+            --bg-dark: #0f172a; /* Slate 900 */
+            --bg-gradient-center: #1e293b; /* Slate 800 */
+            --primary: #94a3b8; /* Slate 400 */
+            --accent: #38bdf8; /* Sky 400 */
+            --text-main: #f1f5f9;
+            --text-muted: #64748b;
+            --orb-color: #e0f2fe;
+            --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        /* Light Theme Override */
+        [data-theme="light"] {
+            --bg-dark: #f8fafc;
+            --bg-gradient-center: #e2e8f0;
+            --primary: #475569;
+            --accent: #0284c7;
+            --text-main: #0f172a;
+            --text-muted: #94a3b8;
+            --orb-color: #0ea5e9;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; /* Prevent scroll */
+            background-color: var(--bg-dark);
+            background-image: radial-gradient(circle at center, var(--bg-gradient-center), var(--bg-dark));
+            font-family: var(--font-stack);
+            color: var(--text-main);
+            transition: background 0.5s ease;
+        }
+
+        /* --- UI Layer --- */
+        #app {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+            z-index: 10; padding: 20px;
+        }
+
+        header { 
+            width: 100%; max-width: 500px; display: flex; justify-content: space-between; align-items: center; 
+            padding-top: 10px;
+            position: relative; 
+            z-index: 20; 
+        }
+
+        footer { 
+            width: 100%; max-width: 500px; display: flex; justify-content: space-between; align-items: center; 
+            padding-bottom: 20px; flex-direction: column; gap: 15px; 
+        }
+
+        h1 { font-size: 1.2rem; font-weight: 300; margin: 0; letter-spacing: 1px; color: var(--text-muted); }
+        
+        button {
+            background: none; border: none; color: var(--primary); cursor: pointer;
+            font-size: 1rem; padding: 10px; border-radius: 8px;
+            transition: color 0.2s, background 0.2s;
+            touch-action: manipulation;
+        }
+        button:hover { background: rgba(255,255,255,0.05); color: var(--text-main); }
+        button:active { transform: scale(0.96); }
+
+        .btn-main {
+            background: var(--text-main); color: var(--bg-dark);
+            padding: 12px 32px; font-weight: 600; font-size: 1.1rem;
+            border-radius: 50px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            width: 100%; max-width: 200px;
+        }
+        .btn-main:hover { background: var(--accent); color: white; }
+
+        /* --- Screens --- */
+        .screen {
+            position: absolute; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.4s ease;
+            top: 0; left: 0;
+        }
+        .screen.active { opacity: 1; pointer-events: auto; }
+
+        /* --- The Orb --- */
+        .orb-container {
+            position: relative; width: 300px; height: 300px;
+            display: flex; align-items: center; justify-content: center;
+            contain: layout style; 
+        }
+
+        #orb {
+            width: 150px; height: 150px;
+            border-radius: 50%;
+            background: var(--orb-color);
+            box-shadow: 0 0 30px var(--accent);
+            opacity: 0.8;
+            will-change: transform;
+            transform: scale(1) translateZ(0);
+        }
+        
+        #bloom {
+            position: absolute; width: 100%; height: 100%;
+            border-radius: 50%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            will-change: opacity;
+        }
+
+        .guide-text {
+            position: absolute;
+            font-size: 1.5rem; font-weight: 300;
+            color: var(--text-main); text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            pointer-events: none;
+        }
+
+        /* --- Particle System --- */
+        #particle-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1; pointer-events: none; overflow: hidden;
+        }
+        .particle {
+            position: absolute; background: var(--accent);
+            border-radius: 50%; opacity: 0;
+            will-change: transform, opacity;
+        }
+
+        /* --- Overlays & Settings --- */
+        .overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95); z-index: 50;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .overlay.open { opacity: 1; pointer-events: auto; }
+        .modal {
+            width: 90%; max-width: 400px; background: var(--bg-dark);
+            padding: 24px; border-radius: 16px; border: 1px solid var(--primary);
+            max-height: 80vh; overflow-y: auto;
+        }
+        .setting-row {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 16px; color: var(--text-main);
+        }
+        .setting-row label { font-size: 0.95rem; }
+        
+        select, input[type="range"] {
+            background: rgba(255,255,255,0.1); border: 1px solid var(--primary);
+            color: var(--text-main); padding: 5px; border-radius: 4px;
+        }
+        
+        .sr-only {
+            position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+            overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;
+        }
+
+        .status-bar {
+            font-variant-numeric: tabular-nums;
+            font-size: 0.9rem; color: var(--text-muted);
+            margin-top: 10px;
+        }
+
+        .safety-note {
+            font-size: 0.75rem; color: var(--text-muted); text-align: center;
+            margin-top: 20px; opacity: 0.7; max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="live-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+    <div id="particle-layer"></div>
+
+    <div id="app">
+        <header id="main-header">
+            <button id="btn-browser-back" aria-label="Go to Previous Page">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            </button>
+            
+            <h1>CalmBreath</h1>
+            
+            <button id="btn-settings" aria-label="Settings">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </button>
+        </header>
+
+        <div id="screen-landing" class="screen active">
+            <div class="orb-container">
+                <div id="orb-preview" style="width:100px; height:100px; background:var(--orb-color); border-radius:50%; opacity:0.5; box-shadow: 0 0 20px var(--accent);"></div>
+            </div>
+            <div style="text-align:center; margin-top:2rem;">
+                <p style="margin-bottom: 2rem; max-width: 280px; line-height: 1.5;">
+                    A safe place to slow down. <br>
+                    Sit comfortably. Breathe gently.
+                </p>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-bottom: 20px;">
+                    <button class="btn-preset" data-mode="calm">Calm (4-4-4)</button>
+                    <button class="btn-preset" data-mode="focus">Box (4-4-4-4)</button>
+                    <button class="btn-preset" data-mode="sleep">Sleep (4-7-8)</button>
+                </div>
+                <button id="btn-start" class="btn-main">Begin Session</button>
+            </div>
+            <p class="safety-note">Consult a professional before deep breathing if you have respiratory conditions.</p>
+        </div>
+
+        <div id="screen-active" class="screen">
+            <button id="btn-back-session" style="position: absolute; top: 15px; left: 0; z-index: 30;" aria-label="Go Back">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            </button>
+
+            <div class="orb-container">
+                <div id="orb">
+                    <div id="bloom"></div>
+                </div>
+                <div id="text-guide" class="guide-text">Ready</div>
+            </div>
+            
+            <footer>
+                <div class="status-bar" id="timer-display">00:00</div>
+                <div style="display:flex; gap:20px;">
+                    <button id="btn-pause" aria-label="Pause or Resume">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                    </button>
+                    <button id="btn-stop" aria-label="End Session">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+                    </button>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <div id="modal-settings" class="overlay">
+        <div class="modal">
+            <h2 style="margin-top:0">Settings</h2>
+            
+            <div class="setting-row">
+                <label for="sel-theme">Theme</label>
+                <select id="sel-theme">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                </select>
+            </div>
+
+            <div class="setting-row">
+                <label for="inp-volume">Sound Volume</label>
+                <input type="range" id="inp-volume" min="0" max="1" step="0.1" value="0.5">
+            </div>
+
+            <div class="setting-row">
+                <label for="chk-haptics">Haptics</label>
+                <input type="checkbox" id="chk-haptics">
+            </div>
+
+            <div class="setting-row">
+                <label for="inp-duration">Duration (Min)</label>
+                <input type="number" id="inp-duration" min="1" max="60" value="5" style="width: 60px;">
+            </div>
+
+            <hr style="border:0; border-top:1px solid var(--primary); margin: 20px 0;">
+            <button id="btn-close-settings" class="btn-main" style="width:100%">Close</button>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * CalmBreath Architecture
+         */
+
+        // --- 1. CONFIG & STATE ---
+        const CONFIG = {
+            modes: {
+                calm: { inhale: 4, hold1: 4, exhale: 4, hold2: 0, label: "Calm" },
+                focus: { inhale: 4, hold1: 4, exhale: 4, hold2: 4, label: "Box Focus" },
+                sleep: { inhale: 4, hold1: 7, exhale: 8, hold2: 0, label: "4-7-8 Sleep" },
+                micro: { inhale: 3, hold1: 3, exhale: 3, hold2: 0, label: "Panic Reset" }
+            },
+            fps: 60,
+            step: 1/60
+        };
+
+        const state = {
+            mode: 'calm',
+            phase: 'idle', // idle, inhale, hold1, exhale, hold2
+            phaseTime: 0, 
+            totalTime: 0, 
+            targetDuration: 300, 
+            isRunning: false,
+            isPaused: false,
+            needsPaint: false,
+            volume: 0.5,
+            haptics: false,
+            theme: 'dark'
+        };
+
+        // DOM Elements
+        const dom = {
+            orb: document.getElementById('orb'),
+            bloom: document.getElementById('bloom'),
+            textGuide: document.getElementById('text-guide'),
+            timer: document.getElementById('timer-display'),
+            header: document.getElementById('main-header'),
+            screens: {
+                landing: document.getElementById('screen-landing'),
+                active: document.getElementById('screen-active')
+            },
+            buttons: {
+                start: document.getElementById('btn-start'),
+                pause: document.getElementById('btn-pause'),
+                stop: document.getElementById('btn-stop'),
+                settings: document.getElementById('btn-settings'),
+                closeSettings: document.getElementById('btn-close-settings'),
+                backSession: document.getElementById('btn-back-session'),
+                browserBack: document.getElementById('btn-browser-back') // NEW
+            },
+            modal: document.getElementById('modal-settings'),
+            live: document.getElementById('live-announcer'),
+            particleLayer: document.getElementById('particle-layer')
+        };
+
+        // --- 2. AUDIO ENGINE ---
+        const audio = {
+            ctx: null,
+            buffers: {},
+            
+            init: function() {
+                if (this.ctx) return;
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
+                this.generateBuffers();
+            },
+
+            generateBuffers: async function() {
+                const duration = 3; 
+                const sampleRate = this.ctx.sampleRate;
+                const bufferSize = sampleRate * duration;
+                const buffer = this.ctx.createBuffer(1, bufferSize, sampleRate);
+                const data = buffer.getChannelData(0);
+
+                for (let i = 0; i < bufferSize; i++) {
+                    const t = i / sampleRate;
+                    const wave = Math.sin(t * 220 * 2 * Math.PI) * 0.5 + 
+                                 Math.sin(t * 224 * 2 * Math.PI) * 0.3 + 
+                                 Math.sin(t * 440 * 2 * Math.PI) * 0.1;
+                    
+                    let envelope = 1;
+                    if (t < 0.5) envelope = t / 0.5;
+                    else envelope = 1 - ((t - 0.5) / 2.5);
+
+                    data[i] = wave * envelope * 0.3;
+                }
+                this.buffers.pad = buffer;
+
+                const bellBuffer = this.ctx.createBuffer(1, sampleRate * 2, sampleRate);
+                const bellData = bellBuffer.getChannelData(0);
+                for (let i = 0; i < sampleRate * 2; i++) {
+                    const t = i / sampleRate;
+                    const wave = Math.sin(t * 880 * 2 * Math.PI) * Math.exp(-4 * t);
+                    bellData[i] = wave * 0.2;
+                }
+                this.buffers.bell = bellBuffer;
+            },
+
+            play: function(type, pitch = 1.0) {
+                if (!this.ctx || state.volume <= 0) return;
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+
+                const src = this.ctx.createBufferSource();
+                src.buffer = this.buffers[type];
+                src.playbackRate.value = pitch;
+                
+                const gain = this.ctx.createGain();
+                gain.gain.value = state.volume;
+                
+                src.connect(gain);
+                gain.connect(this.ctx.destination);
+                src.start(0);
+            }
+        };
+
+        // --- 3. PARTICLE SYSTEM ---
+        const particles = {
+            pool: [],
+            max: 20,
+            
+            init: function() {
+                for(let i=0; i<this.max; i++) {
+                    const el = document.createElement('div');
+                    el.className = 'particle';
+                    el.style.width = (Math.random() * 4 + 2) + 'px';
+                    el.style.height = el.style.width;
+                    el.style.transform = 'translate3d(-100px, -100px, 0)';
+                    dom.particleLayer.appendChild(el);
+                    this.pool.push({
+                        el: el,
+                        x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 0, active: false
+                    });
+                }
+            },
+
+            spawn: function() {
+                const p = this.pool.find(p => !p.active);
+                if (!p) return;
+
+                p.active = true;
+                p.x = Math.random() * window.innerWidth;
+                p.y = window.innerHeight + 10;
+                p.vx = (Math.random() - 0.5) * 0.5;
+                p.vy = -(Math.random() * 1 + 0.5);
+                p.life = 0;
+                p.maxLife = 100 + Math.random() * 100;
+                p.el.style.opacity = (Math.random() * 0.4 + 0.1).toFixed(2);
+            },
+
+            update: function() {
+                this.pool.forEach(p => {
+                    if (!p.active) return;
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.life++;
+
+                    if (p.life > p.maxLife || p.y < -10) {
+                        p.active = false;
+                        p.el.style.opacity = 0;
+                        p.el.style.transform = 'translate3d(-50px, -50px, 0)';
+                    }
+                });
+                
+                if (state.isRunning && Math.random() < 0.05) this.spawn();
+            },
+
+            draw: function() {
+                 this.pool.forEach(p => {
+                    if (p.active) {
+                        p.el.style.transform = `translate3d(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px, 0)`;
+                    }
+                 });
+            }
+        };
+
+        // --- 4. PHYSICS & LOOP ---
+        let lastTime = 0;
+        let accumulator = 0;
+        let orbScale = 1;
+        let bloomOpacity = 0;
+
+        function updatePhysics(dt) {
+            if (!state.isRunning || state.isPaused) return;
+
+            state.totalTime += dt;
+            state.phaseTime += dt;
+            
+            const mode = CONFIG.modes[state.mode];
+            
+            if (state.phase === 'idle') {
+                transitionPhase('inhale');
+            } else if (state.phase === 'inhale' && state.phaseTime >= mode.inhale) {
+                transitionPhase(mode.hold1 > 0 ? 'hold1' : 'exhale');
+            } else if (state.phase === 'hold1' && state.phaseTime >= mode.hold1) {
+                transitionPhase('exhale');
+            } else if (state.phase === 'exhale' && state.phaseTime >= mode.exhale) {
+                transitionPhase(mode.hold2 > 0 ? 'hold2' : 'inhale');
+            } else if (state.phase === 'hold2' && state.phaseTime >= mode.hold2) {
+                transitionPhase('inhale');
+            }
+
+            const modeDur = mode[state.phase];
+            const progress = Math.min(state.phaseTime / modeDur, 1);
+            
+            const ease = t => -(Math.cos(Math.PI * t) - 1) / 2;
+
+            if (state.phase === 'inhale') {
+                orbScale = 1 + (ease(progress) * 0.5);
+                bloomOpacity = progress * 0.3;
+            } else if (state.phase === 'hold1') {
+                orbScale = 1.5;
+                bloomOpacity = 0.3 + (Math.sin(state.phaseTime * 2) * 0.1);
+            } else if (state.phase === 'exhale') {
+                orbScale = 1.5 - (ease(progress) * 0.5);
+                bloomOpacity = 0.3 - (progress * 0.3);
+            } else if (state.phase === 'hold2') {
+                orbScale = 1.0;
+                bloomOpacity = 0;
+            }
+
+            particles.update();
+
+            if (state.totalTime >= state.targetDuration && state.phase === 'exhale' && progress >= 0.99) {
+                endSession();
+            }
+
+            state.needsPaint = true;
+        }
+
+        function transitionPhase(newPhase) {
+            state.phase = newPhase;
+            state.phaseTime = 0;
+            
+            if (newPhase === 'inhale') {
+                audio.play('pad', 1.0);
+                triggerHaptic([50]);
+                announce("Inhale");
+            } else if (newPhase === 'exhale') {
+                audio.play('pad', 0.8);
+                triggerHaptic([50]);
+                announce("Exhale");
+            } else if (newPhase.includes('hold')) {
+                triggerHaptic([20, 50, 20]);
+                announce("Hold");
+            }
+
+            dom.textGuide.textContent = newPhase.charAt(0).toUpperCase() + newPhase.slice(1);
+            if (newPhase.includes('hold')) dom.textGuide.textContent = "Hold";
+        }
+
+        function loop(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            let frameTime = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            if (frameTime > 0.25) frameTime = 0.25;
+
+            accumulator += frameTime;
+
+            while (accumulator >= CONFIG.step) {
+                updatePhysics(CONFIG.step);
+                accumulator -= CONFIG.step;
+            }
+
+            if (state.needsPaint) {
+                draw();
+                state.needsPaint = false;
+            }
+
+            requestAnimationFrame(loop);
+        }
+
+        function draw() {
+            dom.orb.style.transform = `scale(${orbScale.toFixed(3)}) translateZ(0)`;
+            dom.bloom.style.opacity = bloomOpacity.toFixed(2);
+            
+            const remaining = Math.max(0, state.targetDuration - state.totalTime);
+            const m = Math.floor(remaining / 60).toString().padStart(2, '0');
+            const s = Math.floor(remaining % 60).toString().padStart(2, '0');
+            dom.timer.textContent = `${m}:${s}`;
+
+            particles.draw();
+        }
+
+        // --- 5. HELPERS ---
+        function triggerHaptic(pattern) {
+            if (state.haptics && navigator.vibrate) {
+                navigator.vibrate(pattern);
+            }
+        }
+
+        function announce(text) {
+            dom.live.textContent = text;
+        }
+
+        function startSession() {
+            audio.init();
+            
+            state.targetDuration = parseInt(document.getElementById('inp-duration').value) * 60;
+            if (state.mode === 'micro') state.targetDuration = 60;
+
+            state.totalTime = 0;
+            state.phase = 'idle';
+            state.phaseTime = 0;
+            state.isRunning = true;
+            state.isPaused = false;
+            orbScale = 1;
+            bloomOpacity = 0;
+            
+            // Hide header during session for focus
+            dom.header.style.opacity = '0';
+            dom.header.style.pointerEvents = 'none';
+
+            dom.screens.landing.classList.remove('active');
+            dom.screens.active.classList.add('active');
+            dom.buttons.pause.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+            
+            audio.play('bell', 1.0);
+        }
+
+        function endSession() {
+            state.isRunning = false;
+            audio.play('bell', 0.8);
+            announce("Session complete.");
+            
+            setTimeout(() => {
+                dom.screens.active.classList.remove('active');
+                dom.screens.landing.classList.add('active');
+                
+                // Show header again
+                dom.header.style.opacity = '1';
+                dom.header.style.pointerEvents = 'auto';
+
+                dom.textGuide.textContent = "Ready";
+                particles.pool.forEach(p => { p.active = false; p.el.style.opacity = 0; });
+            }, 500);
+        }
+
+        function togglePause() {
+            if (!state.isRunning) return;
+            state.isPaused = !state.isPaused;
+            if (state.isPaused) {
+                announce("Paused");
+                dom.buttons.pause.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+            } else {
+                announce("Resumed");
+                dom.buttons.pause.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+            }
+        }
+
+        // --- 6. EVENT LISTENERS ---
+        
+        document.querySelectorAll('.btn-preset').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.btn-preset').forEach(b => b.style.background = 'rgba(255,255,255,0.05)');
+                e.target.style.background = 'var(--accent)';
+                e.target.style.color = 'var(--bg-dark)';
+                state.mode = e.target.dataset.mode;
+            });
+        });
+        document.querySelector('.btn-preset').click();
+
+        dom.buttons.start.addEventListener('click', startSession);
+        dom.buttons.pause.addEventListener('click', togglePause);
+        dom.buttons.stop.addEventListener('click', endSession);
+        dom.buttons.backSession.addEventListener('click', endSession);
+        
+        // NEW: Browser Back Listener
+        dom.buttons.browserBack.addEventListener('click', () => {
+            window.history.back();
+        });
+
+        dom.buttons.settings.addEventListener('click', () => dom.modal.classList.add('open'));
+        dom.buttons.closeSettings.addEventListener('click', () => {
+            dom.modal.classList.remove('open');
+            localStorage.setItem('calmbreath_settings', JSON.stringify({
+                theme: state.theme,
+                haptics: state.haptics,
+                volume: state.volume,
+                duration: document.getElementById('inp-duration').value
+            }));
+        });
+
+        document.getElementById('sel-theme').addEventListener('change', (e) => {
+            state.theme = e.target.value;
+            document.documentElement.setAttribute('data-theme', state.theme);
+        });
+
+        document.getElementById('inp-volume').addEventListener('input', (e) => {
+            state.volume = parseFloat(e.target.value);
+        });
+
+        document.getElementById('chk-haptics').addEventListener('change', (e) => {
+            state.haptics = e.target.checked;
+        });
+
+        const saved = JSON.parse(localStorage.getItem('calmbreath_settings'));
+        if (saved) {
+            state.theme = saved.theme || 'dark';
+            document.documentElement.setAttribute('data-theme', state.theme);
+            document.getElementById('sel-theme').value = state.theme;
+            
+            state.haptics = saved.haptics || false;
+            document.getElementById('chk-haptics').checked = state.haptics;
+            
+            state.volume = saved.volume !== undefined ? saved.volume : 0.5;
+            document.getElementById('inp-volume').value = state.volume;
+
+            if(saved.duration) document.getElementById('inp-duration').value = saved.duration;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                if (state.isRunning) togglePause();
+                else startSession();
+            }
+            if (e.code === 'Escape') {
+                if(dom.modal.classList.contains('open')) dom.modal.classList.remove('open');
+                else if(state.isRunning) endSession();
+            }
+        });
+
+        particles.init();
+        requestAnimationFrame(loop);
+
+    </script>
+    <title>Disable Right Click</title>
+    <script>
+        document.addEventListener("contextmenu", function(event) {
+            event.preventDefault();   // Disable right-click menu
+        });
+    </script>
+
+</head>
+<body>
+</body>
+</html>

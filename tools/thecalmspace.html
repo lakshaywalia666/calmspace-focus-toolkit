@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Calm Space</title>
+    
+    <style>
+        /* --- GLOBAL RESET & VARIABLES --- */
+        :root {
+            --bg-deep: #050508;
+            --glass-bg: rgba(30, 30, 35, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text-main: #F0F0F0;
+            --text-muted: #6B7280;
+            --accent-cyan: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.2);
+            --font-stack: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box; /* Ensures padding doesn't break alignment */
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-stack);
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* --- BACK BUTTON (Top Left) --- */
+        .nav-header {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            z-index: 100;
+        }
+
+        .back-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: color 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .back-link:hover {
+            color: var(--text-main);
+        }
+
+        /* --- MAIN CARD CONTAINER (Glass Effect) --- */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px); 
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 520px; 
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+            opacity: 0;
+            animation: floatIn 1s ease-out forwards;
+        }
+
+        @keyframes floatIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- TYPOGRAPHY --- */
+        .status-text {
+            text-align: center;
+            color: var(--accent-cyan);
+            font-size: 1.1rem;
+            font-weight: 400;
+            min-height: 1.5em; 
+            transition: all 0.5s ease;
+        }
+
+        /* --- INPUT AREA --- */
+        textarea {
+            width: 100%; /* Matches button width exactly */
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 20px;
+            color: var(--text-main);
+            font-family: var(--font-stack);
+            font-size: 1rem;
+            line-height: 1.6;
+            resize: none; 
+            height: 180px;
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        textarea:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        /* --- ACTION BUTTON --- */
+        .action-btn {
+            width: 100%; /* Matches textarea width exactly */
+            padding: 18px;
+            background: linear-gradient(135deg, #2a2a35 0%, #1e1e24 100%);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            color: var(--text-main);
+            font-family: var(--font-stack);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .action-btn:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        .action-btn:active {
+            transform: translateY(0);
+        }
+
+        /* --- BACKGROUND CANVAS --- */
+        #star-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="nav-header">
+        <a href="../index.html" class="back-link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Back to Home
+        </a>
+    </nav>
+
+    <main class="glass-card">
+        <div id="status-message" class="status-text">
+            What is weighing on your mind?
+        </div>
+
+        <textarea id="thought-input" placeholder="Type it here. Let it out..."></textarea>
+
+        <button id="action-button" class="action-btn">
+            I'm Ready to Let Go
+        </button>
+    </main>
+
+    <canvas id="star-canvas"></canvas>
+
+    <script>
+        // --- LOGIC ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const input = document.getElementById('thought-input');
+            const button = document.getElementById('action-button');
+            const status = document.getElementById('status-message');
+
+            const initialBtnText = "I'm Ready to Let Go";
+            const activeBtnText = "I Heard It. Now It's Gone. Stay Calm.";
+            
+            // Dynamic Button Text
+            input.addEventListener('input', () => {
+                if(input.value.trim().length > 0) {
+                    button.textContent = activeBtnText;
+                    button.style.borderColor = "var(--accent-cyan)";
+                } else {
+                    button.textContent = initialBtnText;
+                    button.style.borderColor = "var(--glass-border)";
+                }
+            });
+
+            // Action Click
+            button.addEventListener('click', () => {
+                const text = input.value.trim();
+                if (!text) return;
+
+                // --- 1. HAPTIC FEEDBACK (Vibration) ---
+                // Triggers a 100ms vibration if the device supports it
+                if (navigator.vibrate) {
+                    navigator.vibrate(100); 
+                }
+
+                // 2. Silent Save
+                saveSilently(text);
+
+                // 3. Visual Feedback
+                status.style.opacity = '0'; 
+                
+                setTimeout(() => {
+                    status.textContent = "I heard it. Now it's gone. Stay Calm.";
+                    status.style.color = "#4ade80"; 
+                    status.style.opacity = '1'; 
+                }, 250);
+
+                // 4. Clear Input
+                input.style.transition = "opacity 0.5s";
+                input.style.opacity = "0"; 
+                
+                setTimeout(() => {
+                    input.value = "";
+                    input.style.opacity = "1"; 
+                    button.textContent = initialBtnText;
+                    button.style.borderColor = "var(--glass-border)";
+                }, 500);
+
+                // 5. Reset Status Message
+                setTimeout(() => {
+                    status.style.opacity = '0';
+                    setTimeout(() => {
+                        status.textContent = "What is weighing on your mind?";
+                        status.style.color = "var(--accent-cyan)";
+                        status.style.opacity = '1';
+                    }, 250);
+                }, 3500);
+            });
+        });
+
+        function saveSilently(data) {
+            const storeKey = 'calmspace_db';
+            let currentData = [];
+            try {
+                currentData = JSON.parse(localStorage.getItem(storeKey)) || [];
+            } catch(e) { currentData = []; }
+
+            currentData.push({
+                timestamp: new Date().toISOString(),
+                content: data
+            });
+
+            localStorage.setItem(storeKey, JSON.stringify(currentData));
+        }
+
+        // --- BACKGROUND ANIMATION ---
+        const canvas = document.getElementById('star-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        let stars = [];
+        const STAR_COUNT = 60; 
+        
+        function init() {
+            resize();
+            createStars();
+            loop();
+        }
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+
+        function createStars() {
+            stars = [];
+            for(let i = 0; i < STAR_COUNT; i++) {
+                stars.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    size: Math.random() * 1.5 + 0.5, 
+                    speed: Math.random() * 0.2 + 0.05, 
+                    alpha: Math.random() * 0.5 + 0.1   
+                });
+            }
+        }
+
+        function update() {
+            ctx.clearRect(0, 0, width, height); 
+            ctx.fillStyle = "white";
+            
+            for(let star of stars) {
+                star.y -= star.speed; 
+                
+                if(star.y < 0) {
+                    star.y = height;
+                    star.x = Math.random() * width;
+                }
+
+                ctx.globalAlpha = star.alpha;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            requestAnimationFrame(update);
+        }
+
+        window.addEventListener('resize', resize);
+        
+        resize();
+        createStars();
+        const loop = () => { update(); };
+        loop();
+
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Dropping Balls</title>
+    <meta name="description" content="A physics-based ball dropping playground with musical sounds.">
+    <meta name="theme-color" content="#1a1a1a">
+
+    <style>
+        :root {
+            --bg-color: #121212;
+            --bg-gradient: radial-gradient(circle at 50% 30%, #1f1f1f, #0a0a0a);
+            --text-color: #eeeeee;
+            --ui-bg: rgba(255, 255, 255, 0.08);
+            --ui-border: rgba(255, 255, 255, 0.1);
+            --brand-color: #ffffff;
+            --accent-color: #3b82f6;
+            --rain-color: #0ea5e9;
+            --danger-color: #ff4757;
+            --font-stack: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f0f2f5;
+            --bg-gradient: radial-gradient(circle at 50% 30%, #ffffff, #e0e0e0);
+            --text-color: #222222;
+            --ui-bg: rgba(0, 0, 0, 0.05);
+            --ui-border: rgba(0, 0, 0, 0.1);
+            --brand-color: #000000;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            background-color: var(--bg-color);
+            background-image: var(--bg-gradient);
+            font-family: var(--font-stack);
+            color: var(--text-color);
+            transition: background 0.3s ease, color 0.3s ease;
+            touch-action: none;
+        }
+
+        /* --- UI Overlay --- */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            height: 40px; /* Fixed height for alignment */
+        }
+
+        /* Brand Pill (Center) */
+        .brand-pill {
+            pointer-events: auto;
+            background: var(--ui-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 8px 16px;
+            border-radius: 999px;
+            border: 1px solid var(--ui-border);
+            font-weight: 600;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 2;
+        }
+
+        /* Controls (Right) */
+        .controls {
+            pointer-events: auto;
+            position: absolute;
+            right: 0;
+            top: 0;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            height: 100%;
+        }
+
+        /* Back Button (Left) */
+        .btn-back {
+            pointer-events: auto;
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 40px; /* Square aspect */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+
+        .btn {
+            background: var(--ui-bg);
+            border: 1px solid var(--ui-border);
+            color: var(--text-color);
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            font-family: var(--font-stack);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn:hover {
+            background: rgba(128, 128, 128, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn svg {
+            stroke: currentColor;
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Rain Button Active State */
+        .btn-rain.active {
+            background-color: var(--rain-color);
+            color: white;
+            box-shadow: 0 0 15px rgba(14, 165, 233, 0.4);
+            border-color: var(--rain-color);
+        }
+
+        .btn-clear {
+            background-color: var(--danger-color);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 10px rgba(255, 71, 87, 0.3);
+        }
+
+        .btn-clear:hover {
+            background: #e8414f;
+        }
+
+        .settings-panel {
+            pointer-events: auto;
+            background: var(--ui-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 12px;
+            padding: 15px;
+            position: absolute;
+            right: 0;
+            top: 50px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 200px;
+            border: 1px solid var(--ui-border);
+            transform-origin: top right;
+            transition: opacity 0.2s, transform 0.2s;
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.95);
+        }
+
+        .settings-panel.open {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+        }
+
+        input[type="range"] {
+            width: 80px;
+            accent-color: var(--text-color);
+        }
+
+        .footer-hint {
+            text-align: center;
+            font-size: 0.75rem;
+            opacity: 0.6;
+            margin-bottom: 10px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+        /* --- Playground & Balls --- */
+        #playground {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .ball {
+            position: absolute;
+            border-radius: 50%;
+            will-change: transform;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            box-shadow: inset -2px -2px 6px rgba(0,0,0,0.3), inset 2px 2px 6px rgba(255,255,255,0.4);
+        }
+
+        .ball.settled {
+            animation: wobble 2s ease-in-out infinite;
+        }
+
+        @keyframes wobble {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02, 0.98); }
+        }
+
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            pointer-events: none;
+            animation: ripple-anim 0.6s linear forwards;
+            transform: translate(-50%, -50%);
+        }
+
+        @keyframes ripple-anim {
+            0% { width: 0; height: 0; opacity: 1; border-width: 4px; }
+            100% { width: 100px; height: 100px; opacity: 0; border-width: 0; }
+        }
+
+        /* Mobile Adjustment to prevent overlap */
+        @media (max-width: 450px) {
+            .brand-pill {
+                font-size: 0.8rem;
+                padding: 6px 12px;
+                opacity: 0; /* Hide brand on very small screens to save space */
+                pointer-events: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ui-layer">
+        <div class="header">
+            <button class="btn btn-back" id="btn-back" aria-label="Go Back">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+            </button>
+
+            <div class="brand-pill">The Dropping Balls</div>
+            
+            <div class="controls">
+                <button class="btn btn-rain" id="btn-rain" aria-label="Toggle Rain">☔</button>
+                <button class="btn" id="btn-settings" aria-label="Settings">⚙️</button>
+                <button class="btn btn-clear" id="btn-clear">CLEAR</button>
+            </div>
+
+            <div class="settings-panel" id="settings-panel">
+                <div class="setting-row">
+                    <span>Theme</span>
+                    <button class="btn" id="toggle-theme" style="padding: 4px 8px; font-size: 0.7rem;">Dark</button>
+                </div>
+                <div class="setting-row">
+                    <span>Sound</span>
+                    <input type="checkbox" id="check-sound" checked>
+                </div>
+                <div class="setting-row">
+                    <span>Haptics</span>
+                    <input type="checkbox" id="check-haptic" checked>
+                </div>
+                <div class="setting-row">
+                    <span>Gravity</span>
+                    <input type="range" id="range-gravity" min="0.1" max="1.5" step="0.1" value="0.5">
+                </div>
+                <div class="setting-row">
+                    <span>Bounce</span>
+                    <input type="range" id="range-bounce" min="0.1" max="0.9" step="0.1" value="0.7">
+                </div>
+                <div class="setting-row">
+                    <span>Size</span>
+                    <input type="range" id="range-size" min="10" max="100" step="5" value="40">
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-hint">
+            Tap or Press Space to spawn • Right-click (no menu)
+        </div>
+    </div>
+
+    <div id="playground"></div>
+
+    <script>
+        /**
+         * ------------------------------------------------------------------
+         * CONFIGURATION & STATE
+         * ------------------------------------------------------------------
+         */
+        const CONFIG = {
+            maxBalls: 250, 
+            friction: 0.99, 
+            groundFriction: 0.96,
+            sleepThreshold: 0.1,
+            colors: [
+                '#FF9AA2', '#FFB7B2', '#FFDAC1', '#E2F0CB', '#B5EAD7', 
+                '#C7CEEA', '#F6EAC2', '#FFC8A2', '#D4F0F0', '#ECC5F5'
+            ],
+            // Musical Pentatonic Scale (Ratios)
+            musicalScale: [0.5, 0.5625, 0.625, 0.75, 0.833, 1.0, 1.125, 1.25, 1.5, 1.666, 2.0]
+        };
+
+        const state = {
+            balls: [],
+            theme: 'dark',
+            sound: true,
+            haptic: true,
+            isRaining: false,
+            lastRainTime: 0,
+            rainInterval: 150, 
+            gravity: 0.5,
+            bounce: 0.7,
+            ballSize: 40,
+            audioCtx: null,
+            soundBuffer: null,
+            width: window.innerWidth,
+            height: window.innerHeight,
+            audioUnlocked: false
+        };
+
+        const playground = document.getElementById('playground');
+        const settingsPanel = document.getElementById('settings-panel');
+        
+        /**
+         * ------------------------------------------------------------------
+         * AUDIO ENGINE: MARIMBA SYNTH
+         * ------------------------------------------------------------------
+         */
+        function initAudio() {
+            if (state.audioCtx) return;
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            state.audioCtx = new AudioContext();
+            createInstrumentBuffer();
+        }
+
+        function createInstrumentBuffer() {
+            if (!state.audioCtx) return;
+            const sampleRate = state.audioCtx.sampleRate;
+            const duration = 0.5; 
+            const length = sampleRate * duration;
+            const buffer = state.audioCtx.createBuffer(1, length, sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for (let i = 0; i < length; i++) {
+                const t = i / sampleRate;
+                const fundamental = Math.sin(2 * Math.PI * 440 * t); 
+                const harmonic = Math.sin(2 * Math.PI * 880 * t) * 0.5;
+                const envelope = Math.exp(-8 * t); 
+                data[i] = (fundamental + harmonic) * envelope * 0.5;
+            }
+            state.soundBuffer = buffer;
+        }
+
+        function playNote(velocity) {
+            if (!state.sound || !state.soundBuffer || !state.audioCtx) return;
+            if (state.audioCtx.state === 'suspended') state.audioCtx.resume();
+
+            const gainVal = Math.min(Math.abs(velocity) / 20, 0.4);
+            if (gainVal < 0.02) return; 
+
+            const pitchRatio = CONFIG.musicalScale[Math.floor(Math.random() * CONFIG.musicalScale.length)];
+
+            const source = state.audioCtx.createBufferSource();
+            source.buffer = state.soundBuffer;
+            source.playbackRate.value = pitchRatio;
+
+            const gainNode = state.audioCtx.createGain();
+            gainNode.gain.value = gainVal;
+
+            source.connect(gainNode);
+            gainNode.connect(state.audioCtx.destination);
+            source.start(0);
+        }
+
+        function triggerHaptic() {
+            if (state.haptic && navigator.vibrate) navigator.vibrate(4); 
+        }
+
+        /**
+         * ------------------------------------------------------------------
+         * PHYSICS & RENDERING
+         * ------------------------------------------------------------------
+         */
+        class Ball {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 10;
+                this.vy = (Math.random() * 5) - 2; 
+                this.radius = state.ballSize / 2;
+                this.color = CONFIG.colors[Math.floor(Math.random() * CONFIG.colors.length)];
+                this.isSleeping = false;
+                this.el = document.createElement('div');
+                this.needsPaint = true;
+                this.initDOM();
+            }
+
+            initDOM() {
+                this.el.className = 'ball';
+                this.el.style.width = `${state.ballSize}px`;
+                this.el.style.height = `${state.ballSize}px`;
+                this.el.style.background = `radial-gradient(circle at 30% 30%, #fff, ${this.color})`;
+                this.render();
+                playground.appendChild(this.el);
+            }
+
+            update() {
+                if (this.isSleeping) return;
+
+                this.vy += parseFloat(state.gravity);
+                this.vx *= CONFIG.friction;
+                this.vy *= CONFIG.friction;
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                const floor = state.height - this.radius;
+                if (this.y > floor) {
+                    this.y = floor;
+                    if (this.vy > 0) {
+                        if (Math.abs(this.vy) > 2) {
+                            playNote(this.vy);
+                            if(Math.abs(this.vy) > 8) triggerHaptic();
+                        }
+                        this.vy *= -parseFloat(state.bounce);
+                        this.vx *= CONFIG.groundFriction;
+                    }
+                }
+
+                if (this.x < this.radius) {
+                    this.x = this.radius;
+                    this.vx *= -parseFloat(state.bounce);
+                } else if (this.x > state.width - this.radius) {
+                    this.x = state.width - this.radius;
+                    this.vx *= -parseFloat(state.bounce);
+                }
+
+                if (Math.abs(this.vx) < CONFIG.sleepThreshold && 
+                    Math.abs(this.vy) < CONFIG.sleepThreshold && 
+                    this.y >= floor - 1) {
+                    this.isSleeping = true;
+                    this.y = floor; 
+                    this.el.classList.add('settled');
+                }
+
+                this.needsPaint = true;
+            }
+
+            render() {
+                if (!this.needsPaint) return;
+                const drawX = this.x - this.radius;
+                const drawY = this.y - this.radius;
+                this.el.style.transform = `translate3d(${drawX.toFixed(1)}px, ${drawY.toFixed(1)}px, 0)`;
+                this.needsPaint = false;
+            }
+        }
+
+        function loop() {
+            if (state.isRaining) {
+                const now = Date.now();
+                if (now - state.lastRainTime > state.rainInterval) {
+                    spawnBall(Math.random() * (state.width - 50) + 25, -50);
+                    state.lastRainTime = now;
+                }
+            }
+            state.balls.forEach(ball => {
+                ball.update();
+                ball.render();
+            });
+            requestAnimationFrame(loop);
+        }
+
+        /**
+         * ------------------------------------------------------------------
+         * INPUT & INTERACTIONS
+         * ------------------------------------------------------------------
+         */
+        function spawnBall(x, y) {
+            if(!state.audioUnlocked) {
+                initAudio();
+                if(state.audioCtx && state.audioCtx.state === 'suspended') state.audioCtx.resume();
+                state.audioUnlocked = true;
+            }
+
+            if (state.balls.length >= CONFIG.maxBalls) {
+                const oldBall = state.balls.shift();
+                if (oldBall && oldBall.el.parentNode) {
+                    oldBall.el.parentNode.removeChild(oldBall.el);
+                }
+            }
+
+            const b = new Ball(x, y);
+            state.balls.push(b);
+            
+            if (y > 0) createRipple(x, y);
+        }
+
+        function createRipple(x, y) {
+            const r = document.createElement('div');
+            r.className = 'ripple';
+            r.style.left = x + 'px';
+            r.style.top = y + 'px';
+            playground.appendChild(r);
+            setTimeout(() => { if(r.parentNode) r.parentNode.removeChild(r); }, 600);
+        }
+
+        function clearBalls() {
+            state.balls.forEach(b => {
+                if (b.el.parentNode) b.el.parentNode.removeChild(b.el);
+            });
+            state.balls = [];
+        }
+
+        // Global Listeners
+        window.addEventListener('resize', () => {
+            state.width = window.innerWidth;
+            state.height = window.innerHeight;
+        });
+
+        document.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('.ui-layer') && !e.target.closest('#playground')) return;
+            spawnBall(e.clientX, e.clientY);
+        });
+
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                e.preventDefault();
+                spawnBall(state.width / 2, 50);
+            }
+        });
+
+        /**
+         * ------------------------------------------------------------------
+         * UI Logic
+         * ------------------------------------------------------------------
+         */
+        function loadSettings() {
+            const s = localStorage.getItem('ballouch_settings');
+            if (s) {
+                const parsed = JSON.parse(s);
+                state.theme = parsed.theme || 'dark';
+                state.sound = parsed.sound ?? true;
+                state.haptic = parsed.haptic ?? true;
+                state.gravity = parsed.gravity || 0.5;
+                state.bounce = parsed.bounce || 0.7;
+                state.ballSize = parsed.ballSize || 40;
+            }
+            applySettings();
+        }
+
+        function saveSettings() {
+            localStorage.setItem('ballouch_settings', JSON.stringify({
+                theme: state.theme,
+                sound: state.sound,
+                haptic: state.haptic,
+                gravity: state.gravity,
+                bounce: state.bounce,
+                ballSize: state.ballSize
+            }));
+        }
+
+        function applySettings() {
+            document.body.setAttribute('data-theme', state.theme);
+            document.getElementById('toggle-theme').innerText = state.theme === 'dark' ? 'Light' : 'Dark';
+            document.getElementById('check-sound').checked = state.sound;
+            document.getElementById('check-haptic').checked = state.haptic;
+            document.getElementById('range-gravity').value = state.gravity;
+            document.getElementById('range-bounce').value = state.bounce;
+            document.getElementById('range-size').value = state.ballSize;
+        }
+
+        // Button Event Handlers
+        document.getElementById('btn-back').addEventListener('click', () => {
+            if(window.history.length > 1) {
+                window.history.back();
+            } else {
+                console.log("No history to go back to.");
+            }
+        });
+
+        document.getElementById('btn-settings').addEventListener('click', (e) => {
+            e.stopPropagation();
+            settingsPanel.classList.toggle('open');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!settingsPanel.contains(e.target) && e.target.id !== 'btn-settings') {
+                settingsPanel.classList.remove('open');
+            }
+        });
+
+        document.getElementById('toggle-theme').addEventListener('click', () => {
+            state.theme = state.theme === 'dark' ? 'light' : 'dark';
+            applySettings();
+            saveSettings();
+        });
+
+        document.getElementById('check-sound').addEventListener('change', (e) => {
+            state.sound = e.target.checked;
+            saveSettings();
+            if(state.sound) initAudio();
+        });
+
+        document.getElementById('check-haptic').addEventListener('change', (e) => {
+            state.haptic = e.target.checked;
+            saveSettings();
+        });
+
+        document.getElementById('range-gravity').addEventListener('input', (e) => state.gravity = parseFloat(e.target.value));
+        document.getElementById('range-gravity').addEventListener('change', saveSettings);
+
+        document.getElementById('range-bounce').addEventListener('input', (e) => state.bounce = parseFloat(e.target.value));
+        document.getElementById('range-bounce').addEventListener('change', saveSettings);
+
+        document.getElementById('range-size').addEventListener('input', (e) => state.ballSize = parseInt(e.target.value));
+        document.getElementById('range-size').addEventListener('change', saveSettings);
+
+        document.getElementById('btn-clear').addEventListener('click', clearBalls);
+
+        const btnRain = document.getElementById('btn-rain');
+        btnRain.addEventListener('click', () => {
+            state.isRaining = !state.isRaining;
+            if (state.isRaining) {
+                btnRain.classList.add('active');
+                if(!state.audioUnlocked) initAudio();
+            } else {
+                btnRain.classList.remove('active');
+            }
+        });
+
+        // Init
+        loadSettings();
+        requestAnimationFrame(loop);
+
+    </script>
+
+</body>
+</html>

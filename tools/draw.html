@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Draw It | Stress Relief</title>
+    <style>
+        /* --- CSS VARIABLES & RESET --- */
+        :root {
+            --bg-color: #050505;
+            --glass-bg: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --glass-blur: 16px;
+            --accent: #00f2ff;
+            --text-color: #ffffff;
+            --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --toolbar-width: 90px;
+            --btn-size: 60px;
+            --icon-size: 32px;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            cursor: none; 
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            font-family: var(--font-family);
+            color: var(--text-color);
+        }
+
+        /* --- CANVAS LAYERS --- */
+        #drawCanvas { position: absolute; top: 0; left: 0; z-index: 1; }
+        #fxCanvas { position: absolute; top: 0; left: 0; z-index: 2; pointer-events: none; }
+
+        /* --- UI CONTAINER --- */
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        #ui-layer.hidden { opacity: 0; pointer-events: none; }
+
+        /* --- GLASSMORPHISM --- */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            pointer-events: auto;
+            box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        /* --- BUTTONS --- */
+        button {
+            background: transparent; border: none; color: rgba(255, 255, 255, 0.7);
+            width: 100%; height: var(--btn-size); cursor: none;
+            transition: transform 0.1s, color 0.2s, background 0.2s;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 12px;
+        }
+        button:hover { background: rgba(255,255,255,0.05); color: white; }
+        button:active { transform: scale(0.92); }
+        button.active-tool {
+            color: var(--accent);
+            text-shadow: 0 0 12px var(--accent);
+            background: rgba(0, 242, 255, 0.1);
+        }
+
+        /* --- NAVIGATION & LAYOUT --- */
+        .top-left-nav {
+            position: absolute; top: 30px; left: 30px; padding: 15px 30px;
+            font-weight: 700; letter-spacing: 2px; font-size: 1rem;
+            text-transform: uppercase; color: white; text-decoration: none;
+            display: block; transition: all 0.2s; z-index: 20;
+        }
+        .top-left-nav:hover { background: rgba(255,255,255,0.1); }
+        .top-left-nav:active { transform: scale(0.95); }
+
+        .toolbar {
+            position: absolute; left: 30px; top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column; gap: 10px; padding: 20px 10px;
+            width: var(--toolbar-width);
+        }
+        .tool-icon { width: var(--icon-size); height: var(--icon-size); fill: currentColor; }
+
+        .settings-bar {
+            position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 40px; padding: 15px 40px; align-items: center;
+        }
+        .setting-group { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .setting-label {
+            font-size: 10px; font-weight: bold; color: rgba(255,255,255,0.8);
+            text-transform: uppercase; letter-spacing: 1.5px;
+        }
+
+        input[type=range] {
+            appearance: none; -webkit-appearance: none; width: 120px;
+            background: transparent; cursor: none; padding: 10px 0;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 20px; width: 20px;
+            border-radius: 50%; background: var(--text-color); margin-top: -8px;
+            box-shadow: 0 0 15px rgba(255,255,255,0.8); transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:active { transform: scale(1.2); background: var(--accent); }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; background: rgba(255,255,255,0.2); border-radius: 4px;
+        }
+
+        /* --- TOGGLES --- */
+        .divider { width: 1px; height: 40px; background: rgba(255,255,255,0.15); }
+        .toggle-group { display: flex; gap: 20px; }
+        .toggle-item { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: none; }
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute; cursor: none; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255,255,255,0.1); border-radius: 34px;
+            transition: .4s; border: 1px solid rgba(255,255,255,0.2);
+        }
+        .toggle-slider:before {
+            position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px;
+            background-color: white; transition: .4s; border-radius: 50%;
+        }
+        input:checked + .toggle-slider { background-color: var(--accent); border-color: var(--accent); }
+        input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+        /* --- CURSOR --- */
+        #custom-cursor {
+            position: fixed; top: 0; left: 0; width: 20px; height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.9); border-radius: 50%;
+            pointer-events: none; z-index: 9999; transform: translate(-50%, -50%);
+            transition: width 0.1s, height 0.1s; mix-blend-mode: exclusion;
+        }
+        .zen-hint {
+            position: absolute; bottom: 30px; right: 30px;
+            font-size: 12px; opacity: 0.5; pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="custom-cursor"></div>
+    <canvas id="drawCanvas"></canvas>
+    <canvas id="fxCanvas"></canvas>
+
+    <div id="ui-layer">
+        <a href="../index.html" class="glass-panel top-left-nav">Back</a>
+
+        <div class="glass-panel settings-bar">
+            <div class="setting-group">
+                <span class="setting-label">Sym: <span id="sym-val">1</span>x</span>
+                <input type="range" id="symmetryRange" min="1" max="12" value="1" step="1">
+            </div>
+            <div class="setting-group">
+                <span class="setting-label">Size</span>
+                <input type="range" id="sizeRange" min="2" max="60" value="8">
+            </div>
+            <div class="divider"></div>
+            <div class="toggle-group">
+                <label class="toggle-item">
+                    <span class="setting-label">Sound</span>
+                    <div class="switch">
+                        <input type="checkbox" id="soundToggle" checked>
+                        <span class="toggle-slider"></span>
+                    </div>
+                </label>
+                <label class="toggle-item">
+                    <span class="setting-label">Haptic</span>
+                    <div class="switch">
+                        <input type="checkbox" id="hapticToggle" checked>
+                        <span class="toggle-slider"></span>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <div class="glass-panel toolbar">
+            <button id="btn-rainbow" class="active-tool" title="Rainbow"><svg class="tool-icon" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg></button>
+            <button id="btn-color" title="Single Color"><svg class="tool-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg></button>
+            <button id="btn-eraser" title="Eraser"><svg class="tool-icon" viewBox="0 0 24 24"><path d="M16.24 3.56l4.95 4.94c.78.79.78 2.05 0 2.84L12 20.53a4.008 4.008 0 0 1-5.66 0L2.81 17c-.78-.79-.78-2.05 0-2.84l10.6-10.6c.79-.78 2.05-.78 2.83 0zM4.22 15.58l3.54 3.53c.78.79 2.04.79 2.83 0l8.48-8.48-6.37-6.37-8.48 8.48c-.78.78-.78 2.04 0 2.84z"/></svg></button>
+            <button id="btn-undo" title="Undo"><svg class="tool-icon" viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg></button>
+            <button id="btn-clear" title="Clear All"><svg class="tool-icon" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+            <button id="btn-save" title="Save Image"><svg class="tool-icon" viewBox="0 0 24 24"><path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"/></svg></button>
+        </div>
+        <div class="zen-hint">Press 'H' To View In Full Screen</div>
+    </div>
+
+    <script>
+        /**
+         * --- ROBUST AUDIO ENGINE ---
+         * 1. Creates White Noise Buffer
+         * 2. Uses Bandpass filter for "Scratchy" texture
+         * 3. Dynamically changes volume based on drawing speed
+         */
+        const AudioEngine = {
+            ctx: null,
+            gainNode: null,
+            filterNode: null,
+            source: null,
+            isSetup: false,
+
+            init: function() {
+                if (this.isSetup) return;
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                    
+                    // Create White Noise Buffer (Stronger than Pink)
+                    const bufferSize = this.ctx.sampleRate * 2; 
+                    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        data[i] = Math.random() * 2 - 1; // Pure White Noise
+                    }
+
+                    // Source
+                    this.source = this.ctx.createBufferSource();
+                    this.source.buffer = buffer;
+                    this.source.loop = true;
+
+                    // Filter (Bandpass 600-1200Hz simulates paper friction)
+                    this.filterNode = this.ctx.createBiquadFilter();
+                    this.filterNode.type = 'bandpass';
+                    this.filterNode.frequency.value = 800;
+                    this.filterNode.Q.value = 0.8;
+
+                    // Volume
+                    this.gainNode = this.ctx.createGain();
+                    this.gainNode.gain.value = 0; // Start Silent
+
+                    // Connect
+                    this.source.connect(this.filterNode);
+                    this.filterNode.connect(this.gainNode);
+                    this.gainNode.connect(this.ctx.destination);
+
+                    this.source.start(0);
+                    this.isSetup = true;
+                    console.log("Audio Engine Initialized");
+                } catch(e) {
+                    console.error("Audio init failed", e);
+                }
+            },
+
+            // Called when pen touches paper
+            wakeUp: function() {
+                if (!this.isSetup) this.init();
+                // Crucial: Check for suspended state (Chrome policy)
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume().then(() => console.log("Audio Resumed"));
+                }
+            },
+
+            // Called continuously while drawing
+            update: function(velocity) {
+                if (!state.soundEnabled || !this.isSetup) return;
+                
+                const now = this.ctx.currentTime;
+                // Map velocity (0-50) to volume (0.05 - 0.25)
+                // Faster = Louder
+                const targetVol = Math.min(0.25, 0.05 + (velocity * 0.005));
+                
+                // Small jitter to frequency for realism
+                const freqJitter = 800 + (Math.random() * 200);
+
+                this.gainNode.gain.setTargetAtTime(targetVol, now, 0.02); // Fast attack
+                this.filterNode.frequency.setTargetAtTime(freqJitter, now, 0.05);
+            },
+
+            // Called when pen lifts
+            stop: function() {
+                if (!this.isSetup) return;
+                const now = this.ctx.currentTime;
+                this.gainNode.gain.setTargetAtTime(0, now, 0.1); // Quick fade out
+            }
+        };
+
+        // --- APP LOGIC ---
+        const canvas = document.getElementById('drawCanvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const fxCanvas = document.getElementById('fxCanvas');
+        const fxCtx = fxCanvas.getContext('2d');
+        const cursor = document.getElementById('custom-cursor');
+        const uiLayer = document.getElementById('ui-layer');
+
+        const state = {
+            isDrawing: false,
+            mode: 'rainbow',
+            colorHsl: 0,
+            staticColor: '#00f2ff',
+            baseSize: 8,
+            symmetry: 1,
+            history: [],
+            historyIndex: -1,
+            lastPoint: { x: 0, y: 0 },
+            lastWidth: 0,
+            zenMode: false,
+            soundEnabled: true,
+            hapticsEnabled: true,
+            hapticThrottle: 0
+        };
+
+        const particles = [];
+
+        function resize() {
+            let temp;
+            if (canvas.width > 0) temp = ctx.getImageData(0,0, canvas.width, canvas.height);
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            fxCanvas.width = window.innerWidth;
+            fxCanvas.height = window.innerHeight;
+            if (temp) ctx.putImageData(temp, 0, 0);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function saveState() {
+            if (state.historyIndex < state.history.length - 1) {
+                state.history = state.history.slice(0, state.historyIndex + 1);
+            }
+            state.history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+            if (state.history.length > 15) state.history.shift();
+            else state.historyIndex++;
+        }
+
+        function undo() {
+            if (state.historyIndex > 0) {
+                state.historyIndex--;
+                ctx.putImageData(state.history[state.historyIndex], 0, 0);
+            } else if (state.historyIndex === 0) {
+                ctx.clearRect(0,0,canvas.width, canvas.height);
+                state.historyIndex = -1;
+            }
+        }
+
+        function getPointerPos(e) {
+            if (e.touches) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            return { x: e.clientX, y: e.clientY };
+        }
+
+        function isOverUI(e) {
+            if (e.target.closest('.glass-panel')) return true;
+            if (e.target.closest('.switch')) return true;
+            if (['BUTTON','INPUT','A'].includes(e.target.tagName)) return true;
+            return false;
+        }
+
+        function startDrawing(e) {
+            if (isOverUI(e)) return;
+            
+            e.preventDefault();
+            // WAKE UP AUDIO
+            AudioEngine.wakeUp();
+
+            state.isDrawing = true;
+            const pos = getPointerPos(e);
+            state.lastPoint = pos;
+            state.lastWidth = state.baseSize;
+            
+            if (state.historyIndex === -1 && state.history.length === 0) saveState();
+        }
+
+        function stopDrawing() {
+            if (state.isDrawing) {
+                state.isDrawing = false;
+                saveState();
+                AudioEngine.stop();
+            }
+        }
+
+        function draw(e) {
+            const pos = getPointerPos(e);
+            cursor.style.left = pos.x + 'px';
+            cursor.style.top = pos.y + 'px';
+            
+            if (!state.isDrawing) return;
+            e.preventDefault();
+
+            // Calculate Velocity
+            const dist = Math.hypot(pos.x - state.lastPoint.x, pos.y - state.lastPoint.y);
+            const velocity = Math.min(dist, 50);
+
+            // AUDIO UPDATE
+            AudioEngine.update(velocity);
+
+            // HAPTICS
+            if (state.hapticsEnabled && navigator.vibrate) {
+                const now = Date.now();
+                if (now - state.hapticThrottle > 60) { 
+                    navigator.vibrate(5); 
+                    state.hapticThrottle = now;
+                }
+            }
+
+            // Drawing Physics
+            const targetWidth = Math.max(state.baseSize * 0.2, state.baseSize - (velocity * 0.15));
+            const currentWidth = state.lastWidth + (targetWidth - state.lastWidth) * 0.2;
+
+            if (state.mode === 'rainbow') {
+                state.colorHsl = (state.colorHsl + 2) % 360;
+                ctx.strokeStyle = `hsl(${state.colorHsl}, 100%, 60%)`;
+                ctx.shadowColor = `hsl(${state.colorHsl}, 100%, 60%)`;
+            } else if (state.mode === 'eraser') {
+                ctx.strokeStyle = '#050505';
+                ctx.shadowColor = 'transparent';
+            } else {
+                ctx.strokeStyle = state.staticColor;
+                ctx.shadowColor = state.staticColor;
+            }
+
+            ctx.lineWidth = currentWidth;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.shadowBlur = (state.mode === 'eraser') ? 0 : 15;
+
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            const sectors = state.symmetry;
+            const angleStep = (Math.PI * 2) / sectors;
+
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            for (let i = 0; i < sectors; i++) {
+                ctx.rotate(angleStep);
+                const x1 = state.lastPoint.x - cx;
+                const y1 = state.lastPoint.y - cy;
+                const x2 = pos.x - cx;
+                const y2 = pos.y - cy;
+
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                const midX = (x1 + x2) / 2;
+                const midY = (y1 + y2) / 2;
+                ctx.quadraticCurveTo(x1, y1, midX, midY);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            if (state.mode !== 'eraser' && Math.random() > 0.7) {
+                spawnParticles(pos.x, pos.y, ctx.strokeStyle);
+            }
+
+            state.lastPoint = pos;
+            state.lastWidth = currentWidth;
+        }
+
+        // Listeners
+        window.addEventListener('mousedown', startDrawing);
+        window.addEventListener('mousemove', draw);
+        window.addEventListener('mouseup', stopDrawing);
+        window.addEventListener('touchstart', startDrawing, {passive: false});
+        window.addEventListener('touchmove', draw, {passive: false});
+        window.addEventListener('touchend', stopDrawing);
+
+        document.getElementById('symmetryRange').addEventListener('input', (e) => {
+            state.symmetry = parseInt(e.target.value);
+            document.getElementById('sym-val').innerText = state.symmetry;
+        });
+
+        document.getElementById('sizeRange').addEventListener('input', (e) => {
+            state.baseSize = parseInt(e.target.value);
+            cursor.style.width = (state.baseSize * 2) + 'px';
+            cursor.style.height = (state.baseSize * 2) + 'px';
+        });
+
+        document.getElementById('soundToggle').addEventListener('change', (e) => {
+            state.soundEnabled = e.target.checked;
+            if(!state.soundEnabled) AudioEngine.stop();
+        });
+
+        document.getElementById('hapticToggle').addEventListener('change', (e) => {
+            state.hapticsEnabled = e.target.checked;
+        });
+
+        const tools = {
+            'btn-rainbow': () => { state.mode = 'rainbow'; },
+            'btn-color': () => { 
+                state.mode = 'color'; 
+                const colors = ['#ff0055', '#00f2ff', '#39ff14', '#ffff00', '#bd00ff', '#ff8800'];
+                state.staticColor = colors[Math.floor(Math.random() * colors.length)];
+            },
+            'btn-eraser': () => { state.mode = 'eraser'; },
+            'btn-undo': () => { undo(); },
+            'btn-clear': () => { ctx.clearRect(0,0, canvas.width, canvas.height); saveState(); },
+            'btn-save': () => {
+                const link = document.createElement('a');
+                link.download = 'yourdrawing.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            }
+        };
+
+        Object.keys(tools).forEach(id => {
+            const btn = document.getElementById(id);
+            btn.addEventListener('click', (e) => {
+                tools[id]();
+                if (['btn-rainbow', 'btn-color', 'btn-eraser'].includes(id)) {
+                    document.querySelectorAll('.toolbar button').forEach(b => b.classList.remove('active-tool'));
+                    btn.classList.add('active-tool');
+                }
+            });
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') undo();
+            if (e.key.toLowerCase() === 'h') {
+                state.zenMode = !state.zenMode;
+                uiLayer.classList.toggle('hidden');
+                cursor.style.display = state.zenMode ? 'none' : 'block';
+            }
+        });
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x + (Math.random() - 0.5) * 20;
+                this.y = y + (Math.random() - 0.5) * 20;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.life = 1.0;
+                this.color = color;
+                this.size = Math.random() * 4;
+            }
+            update() { this.x += this.vx; this.y += this.vy; this.life -= 0.03; this.size *= 0.95; }
+            draw(ctx) {
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function spawnParticles(x, y, color) {
+            for(let i=0; i<3; i++) particles.push(new Particle(x, y, color));
+        }
+
+        function animate() {
+            fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.update();
+                p.draw(fxCtx);
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        document.body.addEventListener('mousemove', (e) => {
+            if(!state.isDrawing) {
+                cursor.style.left = e.clientX + 'px';
+                cursor.style.top = e.clientY + 'px';
+            }
+        });
+    </script>
+    <title>Disable Right Click</title>
+    <script>
+        document.addEventListener("contextmenu", function(event) {
+            event.preventDefault();   // Disable right-click menu
+        });
+    </script>
+
+</head>
+<body>
+    
+</body>
+</html>

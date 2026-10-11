@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calmspace-focus-studio-app
+spec:
+  # This tells Kubernetes how many copies of your website to run. 
+  # Let's run 2 copies so if one crashes, the other is still awake!
+  replicas: 2
+  selector:
+    matchLabels:
+      app: calmspace-focus-studio
+  template:
+    metadata:
+      labels:
+        app: calmspace-focus-studio
+    spec:
+      containers:
+      - name: website
+        # IMPORTANT: Replace YOUR_GITHUB_USERNAME with your actual GitHub username!
+        # This tells Ubuntu exactly which shelf to grab the box from.
+        image: ghcr.io/lakshaywalia666/calmspace-focus-studio:latest
+        ports:
+        - containerPort: 80

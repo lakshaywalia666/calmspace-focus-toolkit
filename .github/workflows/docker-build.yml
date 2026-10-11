@@ -1,0 +1,39 @@
+name: Build and Push Container
+
+# 1. THE TRIGGER: Wake up every time you push code to GitHub
+on:
+  push:
+    branches: [ "main", "master" ]
+
+# 2. THE WORK: What the robot actually does
+jobs:
+  build-and-store:
+    runs-on: ubuntu-latest # GitHub gives you a free temporary server to do the heavy lifting!
+    
+    # Give the robot permission to upload the finished box to your free GitHub storage shelf
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # Step A: Download your website code into the temporary server
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Step B: Log into GitHub Container Registry (GHCR) - your free storage shelf
+      # (GitHub handles the passwords automatically behind the scenes)
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step C: Read the Dockerfile, build the container, and push it to the shelf!
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          # This tags your container so your Ubuntu server can find it later
+          tags: ghcr.io/${{ github.repository_owner }}/calmspace-focus-studio:latest

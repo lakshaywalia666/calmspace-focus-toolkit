@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Deep Focus</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- DARK NEON THEME --- */
+        :root {
+            --bg-deep: #050508;
+            --glass-bg: rgba(20, 20, 25, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text-main: #F0F0F0;
+            --text-muted: #666;
+            --neon-blue: #00F0FF;
+            --neon-purple: #BC13FE;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+            -webkit-touch-callout: none;
+        }
+
+        /* --- HEADER --- */
+        header {
+            width: 100%;
+            padding: 20px;
+            background: rgba(5, 5, 8, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--glass-border);
+            position: absolute; top: 0; z-index: 100;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .back-btn {
+            background: rgba(255,255,255,0.1);
+            color: white; padding: 10px 20px; border-radius: 12px;
+            text-decoration: none; font-weight: 700; font-size: 0.9rem;
+            display: flex; align-items: center; gap: 8px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .noise-toggle {
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(30, 30, 35, 0.6);
+            padding: 10px 20px;
+            border-radius: 30px;
+            border: 1px solid var(--glass-border);
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .noise-toggle span { font-size: 0.8rem; font-weight: 700; color: #888; letter-spacing: 1px; }
+        .noise-toggle.active span { color: var(--neon-blue); }
+        .noise-toggle.active { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(0, 240, 255, 0.2); }
+
+        main {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            z-index: 10;
+        }
+
+        /* --- INPUTS --- */
+        .input-container {
+            display: flex; gap: 15px; margin-bottom: 40px; animation: fadeIn 0.5s ease;
+        }
+        .input-group { display: flex; flex-direction: column; align-items: center; }
+        .input-group label { font-size: 0.7rem; color: var(--text-muted); margin-top: 8px; text-transform: uppercase; letter-spacing: 1px; }
+
+        input[type="number"] {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid var(--glass-border);
+            color: var(--text-main);
+            width: 80px; height: 80px;
+            text-align: center; font-size: 2.5rem; font-weight: 700; border-radius: 20px; outline: none; transition: 0.3s;
+        }
+        input[type="number"]:focus { border-color: var(--neon-blue); box-shadow: 0 0 20px rgba(0, 240, 255, 0.2); }
+
+        /* --- TIMER VISUALS --- */
+        .timer-display-container {
+            display: none; /* Hidden until start */
+            position: relative;
+            width: 320px; height: 320px; /* Fixed container size */
+            justify-content: center; align-items: center;
+        }
+
+        /* The SVG Ring */
+        svg.timer-svg { 
+            transform: rotate(-90deg); 
+            width: 100%; height: 100%; 
+            position: absolute; 
+            top: 0; left: 0;
+            overflow: visible;
+        }
+
+        /* REVOLVE ANIMATION CLASS */
+        svg.timer-svg.revolve {
+            animation: spin 8s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(-90deg); }
+            to { transform: rotate(270deg); }
+        }
+
+        circle { fill: none; stroke-width: 6; stroke-linecap: round; }
+        .bg-ring { stroke: rgba(255, 255, 255, 0.05); }
+        
+        .progress-ring {
+            stroke: var(--neon-blue);
+            stroke-dasharray: 942; /* 2 * PI * 150 */
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 1s linear;
+            filter: drop-shadow(0 0 15px var(--neon-blue));
+        }
+
+        /* The Text - Centered & Sized to Fit */
+        .countdown-text {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            text-align: center;
+            font-size: 2.8rem; /* Adjusted to fit inside ring */
+            font-weight: 700;
+            font-feature-settings: "tnum";
+            font-variant-numeric: tabular-nums;
+            color: var(--text-main);
+            text-shadow: 0 0 20px rgba(0,0,0,0.8);
+            z-index: 2;
+        }
+
+        /* --- CONTROLS --- */
+        .main-btn {
+            background: var(--neon-blue); color: #000; border: none; padding: 18px 50px; border-radius: 50px;
+            font-size: 1.2rem; font-weight: 900; cursor: pointer; box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+            transition: 0.2s; text-transform: uppercase; letter-spacing: 1px; margin-top: 30px;
+        }
+        .main-btn:active { transform: scale(0.95); }
+
+        .stop-btn {
+            background: rgba(255, 46, 147, 0.1); color: #FF2E93; border: 2px solid #FF2E93;
+            padding: 15px 40px; border-radius: 50px; font-weight: 900; cursor: pointer;
+            text-transform: uppercase; margin-top: 30px; display: none;
+        }
+        .stop-btn:hover { background: rgba(255, 46, 147, 0.2); box-shadow: 0 0 20px rgba(255, 46, 147, 0.2); }
+
+        #star-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+        .hidden { display: none !important; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="../index.html" class="back-btn"><span>←</span> HOME</a>
+        <div class="noise-toggle" id="noise-btn" onclick="toggleNoise()">
+            <span>BROWN NOISE</span>
+        </div>
+    </header>
+
+    <main>
+        
+        <div class="input-container" id="input-ui">
+            <div class="input-group">
+                <input type="number" id="hours" min="0" max="12" placeholder="00">
+                <label>Hr</label>
+            </div>
+            <div class="input-group">
+                <input type="number" id="minutes" min="0" max="59" placeholder="00" value="25">
+                <label>Min</label>
+            </div>
+            <div class="input-group">
+                <input type="number" id="seconds" min="0" max="59" placeholder="00" value="00">
+                <label>Sec</label>
+            </div>
+        </div>
+
+        <div class="timer-display-container" id="visual-ui">
+            <svg class="timer-svg" id="timer-ring-svg">
+                <circle class="bg-ring" cx="160" cy="160" r="150"></circle>
+                <circle class="progress-ring" id="progressRing" cx="160" cy="160" r="150"></circle>
+            </svg>
+            
+            <div class="countdown-text" id="timer-text">00:00:00</div>
+        </div>
+
+        <button class="main-btn" id="start-btn" onclick="startFocus()">START FOCUS</button>
+        <button class="stop-btn" id="stop-btn" onclick="stopFocus()">STOP / RESET</button>
+
+    </main>
+
+    <canvas id="star-canvas"></canvas>
+
+    <script>
+        // CONFIG
+        window.addEventListener('contextmenu', (e) => e.preventDefault());
+        const state = { noise: false, running: false };
+
+        // AUDIO
+        let audioCtx;
+        let noiseSource;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function createBrownNoise() {
+            const bufferSize = audioCtx.sampleRate * 2; 
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            let lastOut = 0;
+            for (let i = 0; i < bufferSize; i++) {
+                const white = Math.random() * 2 - 1;
+                lastOut = (lastOut + (0.02 * white)) / 1.02;
+                data[i] = lastOut * 3.5; 
+            }
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            noise.loop = true;
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass'; filter.frequency.value = 300; 
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0.6;
+            noise.connect(filter); filter.connect(gainNode); gainNode.connect(audioCtx.destination);
+            return noise;
+        }
+
+        function toggleNoise() {
+            state.noise = !state.noise;
+            const btn = document.getElementById('noise-btn');
+            if (state.noise) {
+                btn.classList.add('active');
+                if (state.running) playNoise();
+            } else {
+                btn.classList.remove('active');
+                stopNoise();
+            }
+        }
+
+        function playNoise() {
+            if(!state.noise || !audioCtx) { initAudio(); if(!state.noise) return; }
+            if(noiseSource) return;
+            noiseSource = createBrownNoise();
+            noiseSource.start();
+        }
+
+        function stopNoise() {
+            if(noiseSource) { noiseSource.stop(); noiseSource = null; }
+        }
+
+        // TIMER LOGIC
+        let totalSeconds = 0;
+        let endTime = 0;
+        let timerInterval = null;
+
+        const uiInput = document.getElementById('input-ui');
+        const uiVisual = document.getElementById('visual-ui');
+        const btnStart = document.getElementById('start-btn');
+        const btnStop = document.getElementById('stop-btn');
+        const timerText = document.getElementById('timer-text');
+        const progressRing = document.getElementById('progressRing');
+        const ringSvg = document.getElementById('timer-ring-svg');
+        
+        const radius = 150;
+        const circumference = 2 * Math.PI * radius;
+        progressRing.style.strokeDasharray = `${circumference} ${circumference}`;
+
+        function setProgress(percent) {
+            const offset = circumference - (percent / 100) * circumference;
+            progressRing.style.strokeDashoffset = offset;
+        }
+
+        function formatTime(s) {
+            const h = Math.floor(s / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            const sec = s % 60;
+            // Adaptive formatting to keep text inside ring
+            if (h > 0) return `${h}:${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+            return `${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+        }
+
+        function startFocus() {
+            const h = parseInt(document.getElementById('hours').value) || 0;
+            const m = parseInt(document.getElementById('minutes').value) || 0;
+            const s = parseInt(document.getElementById('seconds').value) || 0;
+            totalSeconds = (h * 3600) + (m * 60) + s;
+
+            if (totalSeconds <= 0) return;
+
+            state.running = true;
+            endTime = Date.now() + (totalSeconds * 1000);
+
+            uiInput.classList.add('hidden');
+            uiVisual.style.display = 'flex';
+            btnStart.classList.add('hidden');
+            btnStop.style.display = 'block';
+
+            // ADD REVOLVE CLASS
+            ringSvg.classList.add('revolve');
+
+            if(state.noise) playNoise();
+            
+            updateTimer(); 
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function updateTimer() {
+            const now = Date.now();
+            const left = Math.max(0, Math.ceil((endTime - now) / 1000));
+            
+            timerText.innerText = formatTime(left);
+            const percent = (left / totalSeconds) * 100;
+            setProgress(percent);
+
+            if (left <= 0) {
+                finishFocus();
+            }
+        }
+
+        function stopFocus() {
+            clearInterval(timerInterval);
+            state.running = false;
+            stopNoise();
+            
+            // REMOVE REVOLVE CLASS
+            ringSvg.classList.remove('revolve');
+
+            uiInput.classList.remove('hidden');
+            uiVisual.style.display = 'none';
+            btnStart.classList.remove('hidden');
+            btnStop.style.display = 'none';
+            setProgress(0);
+        }
+
+        function finishFocus() {
+            stopFocus();
+            if(navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        }
+
+        // STARS
+        const canvas = document.getElementById('star-canvas');
+        const ctx = canvas.getContext('2d');
+        let w, h, stars = [];
+        function resize() { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
+        function createStars() { stars = []; for(let i=0; i<60; i++) stars.push({x:Math.random()*w, y:Math.random()*h, s:Math.random()*1.5+0.5, sp:Math.random()*0.2+0.05, a:Math.random()*0.5+0.1}); }
+        function update() { 
+            ctx.clearRect(0,0,w,h); 
+            for(let s of stars) { 
+                s.y -= s.sp; if(s.y<0){s.y=h; s.x=Math.random()*w;} 
+                ctx.globalAlpha=s.a; ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(s.x,s.y,s.s,0,6.28); ctx.fill(); 
+            } 
+            requestAnimationFrame(update); 
+        }
+        window.addEventListener('resize', resize); resize(); createStars(); update();
+
+    </script>
+
+</body>
+</html>

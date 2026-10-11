@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: calmspace-focus-studio-service
+spec:
+  # This tells the front desk to look for the containers labeled "calmspace-focus-studio"
+  selector:
+    app: calmspace-focus-studio
+  ports:
+    - port: 80
+      targetPort: 80
+  # NodePort opens a specific port on your Ubuntu server so you can access it locally
+  type: NodePort
