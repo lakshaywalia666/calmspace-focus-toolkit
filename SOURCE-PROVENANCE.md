@@ -1,1 +1,3 @@
-The original local Git history is retained privately in .portfolio-alignment/private-history. The published repository is a clean source import; the clinic database and old screenshots are excluded.
+# Source provenance
+
+This repository contains the CalmSpace static browser applications. Private working archives and unrelated application data are not part of the source tree. The public history uses a GitHub no-reply author address.
