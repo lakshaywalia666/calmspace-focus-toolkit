@@ -2,9 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ALL AT A PLACE</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Stress Burster · CalmSpace</title>
     
     <style>
         /* --- DARK THEME VARIABLES --- */
@@ -301,14 +300,18 @@
         }
 
     </style>
+    <link rel="manifest" href="../manifest.webmanifest">
+    <link rel="icon" href="../assets/icon-192.png">
+    <link rel="stylesheet" href="../assets/accessibility.css">
+    <script type="module" src="../assets/shared.js"></script>
 </head>
 <body>
 
     <header>
         <a href="../index.html" class="back-btn"><span>←</span> HOME</a>
         <div style="display: flex; gap: 15px;">
-            <button id="snd-btn" class="settings-btn active" onclick="toggleSound()">🔊</button>
-            <button id="vib-btn" class="settings-btn active" onclick="toggleVibe()">📳</button>
+            <button id="snd-btn" class="settings-btn active" aria-label="Sound" aria-pressed="true" onclick="toggleSound()">🔊</button>
+            <button id="vib-btn" class="settings-btn active" aria-label="Vibration" aria-pressed="true" onclick="toggleVibe()">📳</button>
         </div>
     </header>
 
@@ -333,12 +336,12 @@
             <div class="mega-switch-base"><div class="mega-switch-knob"></div></div>
         </div>
 
-        <div class="game-card" ontouchstart="squish(this)" ontouchend="unsquish(this)" onmousedown="squish(this)" onmouseup="unsquish(this)">
+        <div class="game-card" id="squish" role="button" tabindex="0" onpointerdown="squish(this)" onpointerup="unsquish(this)" onpointercancel="unsquish(this)" onpointerleave="unsquish(this)">
             <div class="game-title">Squish Me</div>
             <div class="elastic-block"></div>
         </div>
 
-        <div class="game-card" onmousemove="slide(event, this)" ontouchmove="slide(event, this)">
+        <div class="game-card" id="slide" role="slider" tabindex="0" aria-label="Slide" aria-valuenow="50" aria-orientation="vertical" onmousemove="slide(event, this)" ontouchmove="slide(event, this)">
             <div class="game-title">Slide</div>
             <div class="slider-track"><div class="slider-handle"></div></div>
         </div>
@@ -346,10 +349,10 @@
         <div class="game-card">
             <div class="game-title">Neon Drums</div>
             <div class="drum-grid">
-                <div class="drum-pad" onclick="drum(this, 100)"></div>
-                <div class="drum-pad" onclick="drum(this, 200)"></div>
-                <div class="drum-pad" onclick="drum(this, 300)"></div>
-                <div class="drum-pad" onclick="drum(this, 400)"></div>
+                <button type="button" class="drum-pad" aria-label="Drum 1" onclick="drum(this, 100)"></button>
+                <button type="button" class="drum-pad" aria-label="Drum 2" onclick="drum(this, 200)"></button>
+                <button type="button" class="drum-pad" aria-label="Drum 3" onclick="drum(this, 300)"></button>
+                <button type="button" class="drum-pad" aria-label="Drum 4" onclick="drum(this, 400)"></button>
             </div>
         </div>
 
@@ -371,9 +374,9 @@
         <div class="game-card">
             <div class="game-title">Toggle Row</div>
             <div class="binary-row">
-                <div class="b-switch" onclick="flipBin(this)"><div class="b-knob"></div></div>
-                <div class="b-switch" onclick="flipBin(this)"><div class="b-knob"></div></div>
-                <div class="b-switch" onclick="flipBin(this)"><div class="b-knob"></div></div>
+                <div class="b-switch" aria-label="Toggle 1" aria-pressed="false" onclick="flipBin(this)"><div class="b-knob"></div></div>
+                <div class="b-switch" aria-label="Toggle 2" aria-pressed="false" onclick="flipBin(this)"><div class="b-knob"></div></div>
+                <div class="b-switch" aria-label="Toggle 3" aria-pressed="false" onclick="flipBin(this)"><div class="b-knob"></div></div>
             </div>
         </div>
 
@@ -387,17 +390,19 @@
     <canvas id="star-canvas"></canvas>
 
     <script>
-        // NO RIGHT CLICK
-        window.addEventListener('contextmenu', (e) => e.preventDefault());
 
         // CONFIG
         const state = { sound: true, haptic: true };
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        let ctx;
+        const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
         // AUDIO ENGINE
         function playSound(type, freq) {
             if (!state.sound) return;
-            if (ctx.state === 'suspended') ctx.resume();
+            const Context = window.AudioContext || window.webkitAudioContext;
+            if (!Context) return;
+            ctx ??= new Context();
+            if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             const t = ctx.currentTime;
@@ -416,8 +421,18 @@
         }
 
         function vibe(ms) { if(state.haptic && navigator.vibrate) navigator.vibrate(ms); }
-        function toggleSound() { state.sound = !state.sound; document.getElementById('snd-btn').classList.toggle('active'); }
-        function toggleVibe() { state.haptic = !state.haptic; document.getElementById('vib-btn').classList.toggle('active'); }
+        function toggleSound() {
+            state.sound = !state.sound;
+            const button = document.getElementById('snd-btn');
+            button.classList.toggle('active', state.sound);
+            button.setAttribute('aria-pressed', String(state.sound));
+        }
+        function toggleVibe() {
+            state.haptic = !state.haptic;
+            const button = document.getElementById('vib-btn');
+            button.classList.toggle('active', state.haptic);
+            button.setAttribute('aria-pressed', String(state.haptic));
+        }
 
         // INTERACTIONS
         function play(el, type) { playSound(type); vibe(20); }
@@ -425,7 +440,9 @@
         // Pop It
         const popGrid = document.getElementById('pop-grid');
         for(let i=0; i<9; i++) {
-            let p = document.createElement('div'); p.className = 'pop-bubble';
+            let p = document.createElement('button'); p.className = 'pop-bubble';
+            p.type = 'button';
+            p.setAttribute('aria-label', 'Pop bubble ' + (i + 1));
             p.onclick = function(e) { e.stopPropagation(); if(!this.classList.contains('popped')) { this.classList.add('popped'); playSound('pop'); vibe(20); setTimeout(() => this.classList.remove('popped'), 1000); } };
             popGrid.appendChild(p);
         }
@@ -434,22 +451,69 @@
         function toggleSwitch(el) { el.querySelector('.mega-switch-base').classList.toggle('active'); playSound('click'); vibe(40); }
         function squish(el) { el.querySelector('.elastic-block').style.transform = 'scale(0.85)'; vibe(10); }
         function unsquish(el) { el.querySelector('.elastic-block').style.transform = 'scale(1)'; }
-        function slide(e, el) { if((e.buttons !== 1 && e.type !== 'touchmove')) return; const rect = el.querySelector('.slider-track').getBoundingClientRect(); let y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top; y = Math.max(0, Math.min(y, 250)); el.querySelector('.slider-handle').style.top = (y - 30) + 'px'; if(Math.random() > 0.8) { playSound('click'); vibe(5); } }
+        function setSlide(el, value) {
+            value = Math.max(0, Math.min(100, Math.round(value)));
+            el.setAttribute('aria-valuenow', value);
+            el.querySelector('.slider-handle').style.top = `calc(${100 - value}% - 30px)`;
+            if (Math.random() > 0.8) { playSound('click'); vibe(5); }
+        }
+        function slide(e, el) {
+            if (e.buttons !== 1 && e.type !== 'touchmove') return;
+            const rect = el.querySelector('.slider-track').getBoundingClientRect();
+            const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+            setSlide(el, 100 - y / rect.height * 100);
+        }
         
         // NEW TOY LOGIC
         function drum(el, f) { el.classList.add('hit'); playSound('tone', f); vibe(10); setTimeout(()=>el.classList.remove('hit'), 100); }
         const colors = ['#FF2E93', '#00F0FF', '#39FF14', '#FFD300', '#BC13FE']; let cIdx=0;
         function mood(el) { cIdx = (cIdx+1)%colors.length; el.querySelector('.mood-circle').style.background = colors[cIdx]; playSound('pop'); vibe(10); }
-        function flipBin(el) { el.classList.toggle('on'); playSound('click'); vibe(20); }
+        function flipBin(el) { el.setAttribute('aria-pressed', String(el.classList.toggle('on'))); playSound('click'); vibe(20); }
         const words = ["Breathe", "Relax", "Calm", "Peace", "Flow", "Soft", "Slow"];
         function zen(el) { const z = el.querySelector('.zen-text'); z.innerText = words[Math.floor(Math.random()*words.length)]; z.classList.add('show'); playSound('tone', 300); setTimeout(()=>z.classList.remove('show'), 1500); }
+
+        for (const control of document.querySelectorAll('main div[onclick]')) {
+            control.setAttribute('role', 'button');
+            control.tabIndex = 0;
+            control.addEventListener('keydown', event => {
+                if (event.key !== 'Enter' && event.code !== 'Space') return;
+                event.preventDefault();
+                if (!event.repeat) control.click();
+            });
+        }
+        const squishControl = document.getElementById('squish');
+        squishControl.addEventListener('keydown', event => {
+            if (event.key !== 'Enter' && event.code !== 'Space') return;
+            event.preventDefault();
+            if (!event.repeat) squish(squishControl);
+        });
+        squishControl.addEventListener('keyup', () => unsquish(squishControl));
+        squishControl.addEventListener('blur', () => unsquish(squishControl));
+        document.getElementById('slide').addEventListener('keydown', event => {
+            const slider = event.currentTarget;
+            const value = Number(slider.getAttribute('aria-valuenow'));
+            const change = { ArrowUp: value + 4, ArrowRight: value + 4, ArrowDown: value - 4, ArrowLeft: value - 4, Home: 0, End: 100 };
+            if (!(event.key in change)) return;
+            event.preventDefault();
+            setSlide(slider, change[event.key]);
+        });
 
         // STARS
         const canvas = document.getElementById('star-canvas'); const sc = canvas.getContext('2d');
         let w, h, stars = [];
         function resize() { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
         function createStars() { stars = []; for(let i=0; i<80; i++) stars.push({x:Math.random()*w, y:Math.random()*h, s:Math.random()*1.5+0.5, sp:Math.random()*0.3+0.1, a:Math.random()*0.5+0.1}); }
-        function update() { sc.clearRect(0,0,w,h); for(let s of stars) { s.y -= s.sp; if(s.y<0){s.y=h; s.x=Math.random()*w;} sc.globalAlpha=s.a; sc.fillStyle="white"; sc.beginPath(); sc.arc(s.x,s.y,s.s,0,6.28); sc.fill(); } requestAnimationFrame(update); }
+        let starFrame;
+        function update() {
+            if (reducedMotion.matches) return;
+            sc.clearRect(0,0,w,h);
+            for(let s of stars) { s.y -= s.sp; if(s.y<0){s.y=h; s.x=Math.random()*w;} sc.globalAlpha=s.a; sc.fillStyle="white"; sc.beginPath(); sc.arc(s.x,s.y,s.s,0,6.28); sc.fill(); }
+            starFrame = requestAnimationFrame(update);
+        }
+        reducedMotion.addEventListener('change', () => {
+            cancelAnimationFrame(starFrame);
+            update();
+        });
         window.addEventListener('resize', resize); resize(); createStars(); update();
     </script>
 

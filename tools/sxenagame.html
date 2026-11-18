@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Retro Snake</title>
     <style>
         :root {
@@ -23,7 +23,6 @@
             min-height: 100vh;
             margin: 0;
             font-family: 'Courier New', Courier, monospace;
-            touch-action: none; 
             overflow: hidden;
             user-select: none;
             -webkit-user-select: none;
@@ -238,10 +237,14 @@
         }
 
     </style>
+    <link rel="manifest" href="../manifest.webmanifest">
+    <link rel="icon" href="../assets/icon-192.png">
+    <link rel="stylesheet" href="../assets/accessibility.css">
+    <script type="module" src="../assets/shared.js"></script>
 </head>
 <body>
 
-    <a href="javascript:history.back()" class="page-back-btn">← Back</a>
+    <a href="../index.html" class="page-back-btn">← Home</a>
 
     <div class="phone">
         
@@ -279,12 +282,12 @@
 
             <div class="d-pad">
                 <div class="btn-spacer"></div>
-                <button class="phy-btn btn-dir" data-key="UP">▲</button>
+                <button class="phy-btn btn-dir" data-key="UP" aria-label="Up">▲</button>
                 <div class="btn-spacer"></div>
 
-                <button class="phy-btn btn-dir" data-key="LEFT">◀</button>
-                <button class="phy-btn btn-dir" data-key="DOWN">▼</button>
-                <button class="phy-btn btn-dir" data-key="RIGHT">▶</button>
+                <button class="phy-btn btn-dir" data-key="LEFT" aria-label="Left">◀</button>
+                <button class="phy-btn btn-dir" data-key="DOWN" aria-label="Down">▼</button>
+                <button class="phy-btn btn-dir" data-key="RIGHT" aria-label="Right">▶</button>
             </div>
 
         </div>
@@ -506,17 +509,22 @@
             }
         }
 
-        // Pointer Events for buttons
+        // Respond on pointer-down during play, and support normal keyboard activation.
         const buttons = document.querySelectorAll('.phy-btn');
         buttons.forEach(btn => {
-            btn.addEventListener('pointerdown', (e) => {
-                e.preventDefault();
-                btn.classList.add('pressed');
+            const activate = () => {
                 if (btn.id === 'btn-menu') toggleSettings();
                 else if (btn.id === 'btn-start') handleStart();
                 else if (btn.dataset.key) queueInput(btn.dataset.key);
+            };
+            btn.addEventListener('click', event => { if (event.detail === 0) activate(); });
+            btn.addEventListener('pointerdown', event => {
+                if (event.button !== 0 || !event.isPrimary) return;
+                btn.classList.add('pressed');
+                activate();
             });
             btn.addEventListener('pointerup', () => btn.classList.remove('pressed'));
+            btn.addEventListener('pointercancel', () => btn.classList.remove('pressed'));
             btn.addEventListener('pointerleave', () => btn.classList.remove('pressed'));
         });
 
@@ -534,6 +542,7 @@
 
         // Keyboard support (Arrows + Spacebar)
         document.addEventListener('keydown', (e) => {
+            if (e.target.closest('button, a, [role="button"], input, select, textarea')) return;
             // Check for Spacebar to Start
             if (e.code === 'Space' || e.key === ' ') {
                 e.preventDefault(); // Stop scrolling
@@ -554,13 +563,11 @@
         draw();
 
     </script>
-    <title>Disable Right Click</title>
-    <script>
-        document.addEventListener("contextmenu", function(event) {
-            event.preventDefault();   // Disable right-click menu
-        });
-    </script>
 
+    <link rel="manifest" href="../manifest.webmanifest">
+    <link rel="icon" href="../assets/icon-192.png">
+    <link rel="stylesheet" href="../assets/accessibility.css">
+    <script type="module" src="../assets/shared.js"></script>
 </head>
 <body>
 </body>

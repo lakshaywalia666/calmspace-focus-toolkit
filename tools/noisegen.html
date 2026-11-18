@@ -2,370 +2,54 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Singularity - Deep Space Noise</title>
-    <style>
-        /* --- RESET & LAYOUT --- */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background-color: #050505;
-            color: #ffffff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            height: 100vh;
-            width: 100vw;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-        }
-
-        /* --- BACKGROUND STARS --- */
-        .stars {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: 
-                radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 3px),
-                radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 2px),
-                radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 3px);
-            background-size: 550px 550px, 350px 350px, 250px 250px;
-            background-position: 0 0, 40px 60px, 130px 270px;
-            z-index: 0;
-            opacity: 0.6;
-        }
-
-        /* --- THE BLACK HOLE --- */
-        .black-hole-container {
-            position: relative;
-            width: 300px;
-            height: 300px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1;
-            margin-bottom: 40px;
-        }
-
-        /* The glowing ring (Accretion Disk) */
-        .accretion-disk {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            background: conic-gradient(
-                from 0deg,
-                transparent 0%,
-                #4b1d69 20%, 
-                #a64ca6 40%,
-                #ffffff 50%,
-                #a64ca6 60%,
-                #4b1d69 80%,
-                transparent 100%
-            );
-            filter: blur(15px);
-            opacity: 0.5;
-            transition: opacity 1s ease;
-            animation: spin 10s linear infinite;
-            animation-play-state: paused;
-        }
-
-        /* The center darkness (Event Horizon) */
-        .event-horizon {
-            position: absolute;
-            width: 70%;
-            height: 70%;
-            background-color: #000;
-            border-radius: 50%;
-            box-shadow: 0 0 20px 5px #000, inset 0 0 40px #220a2e;
-            z-index: 2;
-        }
-
-        /* --- UI CONTROLS --- */
-        .controls {
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 30px;
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            width: 90%;
-            max-width: 400px;
-        }
-
-        h1 {
-            font-weight: 200;
-            letter-spacing: 4px;
-            font-size: 1.2rem;
-            text-transform: uppercase;
-            opacity: 0.8;
-            margin-bottom: 10px;
-        }
-
-        /* Play Button */
-        .play-btn {
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            border: none;
-            background-color: white;
-            color: black;
-            font-size: 24px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow: 0 0 15px rgba(255,255,255,0.3);
-        }
-
-        .play-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 25px rgba(255,255,255,0.6);
-        }
-
-        /* Volume Slider */
-        .volume-container {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            color: rgba(255,255,255,0.6);
-        }
-
-        input[type=range] {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 100%;
-            background: transparent;
-        }
-
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 16px;
-            width: 16px;
-            border-radius: 50%;
-            background: #ffffff;
-            cursor: pointer;
-            margin-top: -6px;
-        }
-
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 4px;
-            cursor: pointer;
-            background: rgba(255,255,255,0.2);
-            border-radius: 2px;
-        }
-
-        /* Back Button */
-        .back-btn {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 20;
-            background: transparent;
-            border: none;
-            color: rgba(255, 255, 255, 0.7);
-            cursor: pointer;
-            padding: 10px;
-            border-radius: 50%;
-            transition: background 0.3s, color 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .back-btn:hover {
-            background: rgba(255,255,255,0.1);
-            color: white;
-        }
-
-        /* SVG Icons */
-        svg {
-            width: 24px;
-            height: 24px;
-            fill: currentColor;
-        }
-
-        /* Animation Keyframes */
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        /* Active State Classes */
-        body.active .accretion-disk {
-            opacity: 1;
-            animation-play-state: running;
-            box-shadow: 0 0 60px 10px rgba(166, 76, 166, 0.3);
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0c1417">
+    <title>Sound Mixer · CalmSpace</title>
+    <link rel="manifest" href="../manifest.webmanifest">
+    <link rel="icon" href="../assets/icon-192.png">
+    <link rel="stylesheet" href="../assets/studio.css">
+    <link rel="stylesheet" href="../assets/accessibility.css">
+    <script type="module" src="../assets/mixer.js"></script>
 </head>
 <body>
-
-    <button class="back-btn" onclick="history.back()" aria-label="Go Back">
-        <svg viewBox="0 0 24 24">
-            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-        </svg>
-    </button>
-
-    <div class="stars"></div>
-
-    <div class="black-hole-container">
-        <div class="accretion-disk"></div>
-        <div class="event-horizon"></div>
-    </div>
-
-    <div class="controls">
-        <h1>Deep Space</h1>
-        
-        <button id="toggleBtn" class="play-btn">
-            <svg id="playIcon" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z"/>
-            </svg>
-            <svg id="pauseIcon" viewBox="0 0 24 24" style="display: none;">
-                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-            </svg>
-        </button>
-
-        <div class="volume-container">
-            <svg viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
-            </svg>
-            <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.5">
-            <svg viewBox="0 0 24 24" style="width: 18px; height: 18px;">
-                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-            </svg>
+    <header class="shell site-header">
+        <a href="../index.html">← CalmSpace home</a>
+        <a href="focus.html">Focus room</a>
+    </header>
+    <main class="shell page">
+        <div class="intro">
+            <h1>Sound Mixer</h1>
+            <p>Adjust each layer and save mixes to reuse here or in the focus room.</p>
         </div>
-    </div>
-
-    <script>
-        // --- AUDIO ENGINE ---
-        let audioCtx;
-        let noiseSource;
-        let gainNode;
-        let isPlaying = false;
-
-        const toggleBtn = document.getElementById('toggleBtn');
-        const playIcon = document.getElementById('playIcon');
-        const pauseIcon = document.getElementById('pauseIcon');
-        const volumeSlider = document.getElementById('volumeSlider');
-
-        // Create Brown Noise (Deeper, softer than white noise)
-        function createBrownNoise() {
-            const bufferSize = 2 * audioCtx.sampleRate;
-            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const output = noiseBuffer.getChannelData(0);
-            
-            let lastOut = 0;
-            for (let i = 0; i < bufferSize; i++) {
-                const white = Math.random() * 2 - 1;
-                output[i] = (lastOut + (0.02 * white)) / 1.02;
-                lastOut = output[i];
-                output[i] *= 3.5; // Compensate for gain loss
-            }
-            return noiseBuffer;
-        }
-
-        function initAudio() {
-            if (!audioCtx) {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                audioCtx = new AudioContext();
-            }
-
-            // Create nodes
-            const buffer = createBrownNoise();
-            noiseSource = audioCtx.createBufferSource();
-            noiseSource.buffer = buffer;
-            noiseSource.loop = true;
-
-            gainNode = audioCtx.createGain();
-            
-            // Connect: Source -> Gain -> Speakers
-            noiseSource.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-
-            // Set initial volume based on slider
-            gainNode.gain.value = volumeSlider.value;
-            noiseSource.start(0);
-        }
-
-        function togglePlay() {
-            if (!isPlaying) {
-                // START
-                if (!audioCtx) {
-                    initAudio();
-                }
-                
-                // If context was suspended (browsers do this to save battery)
-                if (audioCtx.state === 'suspended') {
-                    audioCtx.resume();
-                }
-
-                // Fade in
-                gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-                gainNode.gain.linearRampToValueAtTime(volumeSlider.value, audioCtx.currentTime + 1);
-
-                // UI Updates
-                playIcon.style.display = 'none';
-                pauseIcon.style.display = 'block';
-                document.body.classList.add('active');
-                isPlaying = true;
-
-            } else {
-                // STOP
-                // Fade out
-                const currentTime = audioCtx.currentTime;
-                gainNode.gain.cancelScheduledValues(currentTime);
-                gainNode.gain.setValueAtTime(gainNode.gain.value, currentTime);
-                gainNode.gain.linearRampToValueAtTime(0, currentTime + 0.5);
-
-                setTimeout(() => {
-                   if(audioCtx) audioCtx.suspend();
-                }, 500);
-
-                // UI Updates
-                playIcon.style.display = 'block';
-                pauseIcon.style.display = 'none';
-                document.body.classList.remove('active');
-                isPlaying = false;
-            }
-        }
-
-        // --- EVENT LISTENERS ---
-        
-        toggleBtn.addEventListener('click', togglePlay);
-
-        volumeSlider.addEventListener('input', (e) => {
-            if (gainNode) {
-                // Use exponential ramping for smoother volume perception
-                gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-                gainNode.gain.setTargetAtTime(e.target.value, audioCtx.currentTime, 0.1);
-            }
-        });
-    </script>
-    <title>Disable Right Click</title>
-    <script>
-        document.addEventListener("contextmenu", function(event) {
-            event.preventDefault();   // Disable right-click menu
-        });
-    </script>
-
-</head>
-<body>
+        <div class="focus-grid">
+            <section class="panel stack" aria-labelledby="layers-heading">
+                <div class="row between">
+                    <h2 id="layers-heading">Sound layers</h2>
+                    <button type="button" class="button primary" id="play">Play sound</button>
+                </div>
+                <div class="stack" id="tracks"></div>
+                <div class="track">
+                    <label for="volume">Master</label>
+                    <input id="volume" type="range" min="0" max="100" value="75">
+                    <output id="volume-value" for="volume">75%</output>
+                </div>
+                <p class="status" id="play-status" role="status"></p>
+            </section>
+            <section class="panel stack" aria-labelledby="mixes-heading">
+                <h2 id="mixes-heading">Mix presets</h2>
+                <label class="field" for="mix-select">Load a mix
+                    <select id="mix-select"></select>
+                </label>
+                <button type="button" class="button" id="delete-mix" hidden>Delete this mix</button>
+                <form class="stack" id="save-mix">
+                    <label class="field" for="mix-name">Save current mix as
+                        <input type="text" id="mix-name" maxlength="36" required placeholder="Mix name">
+                    </label>
+                    <div class="row"><button type="submit" class="button">Save mix</button></div>
+                </form>
+                <p class="status" id="mix-status" role="status"></p>
+            </section>
+        </div>
+    </main>
 </body>
 </html>

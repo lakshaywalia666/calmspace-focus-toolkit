@@ -1,8 +1,18 @@
 # CalmSpace Focus Studio
 
-A collection of small browser tools for breathing exercises, focus sessions, ambient sound, drawing and playful breaks. Built with HTML, CSS, JavaScript and Canvas.
+A collection of 11 browser tools for focus sessions, guided breathing, ambient sound, drawing, and playful breaks. Built with HTML, CSS, JavaScript, Canvas, and Web Audio.
 
-[Open the browser demo](https://lakshaywalia.com/demos/calmspace-focus-studio/) · [Portfolio](https://lakshaywalia.com/projects.html)
+![Focus Room with a running timer and brown noise selected](docs/focus-room.jpg)
+
+[Original portfolio demo](https://lakshaywalia.com/demos/calmspace-focus-studio/)
+
+## Features
+
+- **Focus Room** has a 25-minute default timer, custom durations, pause and resume, and timed or guided breathing breaks. Save your routine to start it from the home page.
+- **Sound Mixer** combines white, pink, and brown noise with generated rain and fan sounds. Adjust each layer, save named mixes, and use them in the Focus Room.
+- **Focus history** is optional and stays in your browser. It shows daily focus totals and includes a clear-history control.
+- **Write and Forget** discards new text. If an older version saved entries in this browser, the tool offers to delete them.
+- **Tool shortcuts** include favorites and recently opened tools. The site can be installed in supported browsers and all 11 tools work offline after the initial cache is ready.
 
 ## Run locally
 
@@ -10,28 +20,19 @@ A collection of small browser tools for breathing exercises, focus sessions, amb
 python -m http.server 8000
 ```
 
-Open <http://127.0.0.1:8000>. A static web server is enough; there is no backend or database.
+Open <http://127.0.0.1:8000>. A static web server is enough to run the app. The offline cache requires HTTPS or localhost. Audio starts from a user interaction. After launching a saved routine from the home page, select **Enable sound** if your routine includes a mix.
 
 ```bash
 docker build -t calmspace .
 docker run --rm -p 127.0.0.1:8080:80 calmspace
 ```
 
-## Scope
+## Browser smoke tests
 
-The repository contains the original browser tools. Audio playback starts through user interaction, and browser support varies for audio and animation features. There are no accounts or server-side user records.
+```bash
+npm install --no-save --no-package-lock playwright@1.62.1
+npx playwright install chromium
+node --test tests/smoke.cjs
+```
 
-Kubernetes manifests are example deployment files. Their presence does not establish that a public cluster is running.
-
-## Contents
-
-- `index.html`: tool launcher
-- `tools/`: focus, breathing, sound, drawing and other interactive pages
-- `Dockerfile`: nginx static hosting
-- `k8s/`: example Kubernetes deployment
-
-## Verified local demonstration
-
-A fresh Docker build served the tool launcher, and beginning a breathing session started the phase indicator and countdown.
-
-![CalmSpace breathing session running locally](docs/breathing-session.jpg)
+GitHub Actions runs the smoke tests and builds the Docker image. For releases that change cached files, update the version and file list in `sw.js` so existing installations receive the new assets. The `k8s/` manifests are examples for container hosting.

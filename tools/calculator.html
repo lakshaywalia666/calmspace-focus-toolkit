@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>CalmSpace Calculator</title>
     <style>
         /* --- 1. SETTINGS & RESET --- */
@@ -247,6 +247,10 @@
         }
 
     </style>
+    <link rel="manifest" href="../manifest.webmanifest">
+    <link rel="icon" href="../assets/icon-192.png">
+    <link rel="stylesheet" href="../assets/accessibility.css">
+    <script type="module" src="../assets/shared.js"></script>
 </head>
 <body>
 
@@ -257,15 +261,15 @@
         </div>
 
         <div class="header">
-            <button class="nav-btn" onclick="goBack()">
+            <a class="nav-btn" href="../index.html" aria-label="CalmSpace home">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-            </button>
+            </a>
             
             <div class="controls">
-                <button class="toggle-btn active" id="soundBtn" onclick="toggleSound()">
+                <button class="toggle-btn active" id="soundBtn" aria-label="Sound" aria-pressed="true" onclick="toggleSound()">
                     <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
                 </button>
-                <button class="toggle-btn active" id="hapticBtn" onclick="toggleHaptic()">
+                <button class="toggle-btn active" id="hapticBtn" aria-label="Vibration" aria-pressed="true" onclick="toggleHaptic()">
                     <svg viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M22 9h-2V7h2v2zm0 4h-2v-2h2v2zm0 4h-2v-2h2v2zM2 9H0V7h2v2zm0 4H0v-2h2v2zm0 4H0v-2h2v2zm14.78-7.94l-2.83-2.83c-.39-.39-1.02-.39-1.41 0L5.66 9.17c-1.56 1.56-1.56 4.09 0 5.66l6.88 6.88c.39.39 1.02.39 1.41 0l6.88-6.88c1.56-1.57 1.51-4.1-.05-5.67zM16 14h-8v-4h8v4z"/></svg>
                 </button>
             </div>
@@ -390,6 +394,7 @@
 
         function toggleSound() {
             settings.sound = !settings.sound;
+            soundBtn.setAttribute('aria-pressed', String(settings.sound));
             soundBtn.classList.toggle('active');
             soundBtn.classList.toggle('inactive');
             triggerHaptic();
@@ -398,16 +403,10 @@
 
         function toggleHaptic() {
             settings.haptic = !settings.haptic;
+            hapticBtn.setAttribute('aria-pressed', String(settings.haptic));
             hapticBtn.classList.toggle('active');
             hapticBtn.classList.toggle('inactive');
             triggerHaptic();
-        }
-
-        // --- BACK BUTTON NAVIGATION ---
-        function goBack() {
-            triggerHaptic();
-            // Direct navigation to index.html
-            window.location.href = '../index.html';
         }
 
         /* --- CORE LOGIC --- */

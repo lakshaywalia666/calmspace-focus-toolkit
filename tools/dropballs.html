@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>The Dropping Balls</title>
     <meta name="description" content="A physics-based ball dropping playground with musical sounds.">
     <meta name="theme-color" content="#1a1a1a">
@@ -48,7 +48,6 @@
             font-family: var(--font-stack);
             color: var(--text-color);
             transition: background 0.3s ease, color 0.3s ease;
-            touch-action: none;
         }
 
         /* --- UI Overlay --- */
@@ -268,17 +267,21 @@
             }
         }
     </style>
+    <link rel="manifest" href="../manifest.webmanifest">
+    <link rel="icon" href="../assets/icon-192.png">
+    <link rel="stylesheet" href="../assets/accessibility.css">
+    <script type="module" src="../assets/shared.js"></script>
 </head>
 <body>
 
     <div class="ui-layer">
         <div class="header">
-            <button class="btn btn-back" id="btn-back" aria-label="Go Back">
+            <a class="btn btn-back" href="../index.html" aria-label="CalmSpace home">
                 <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="19" y1="12" x2="5" y2="12"></line>
                     <polyline points="12 19 5 12 12 5"></polyline>
                 </svg>
-            </button>
+            </a>
 
             <div class="brand-pill">The Dropping Balls</div>
             
@@ -294,30 +297,30 @@
                     <button class="btn" id="toggle-theme" style="padding: 4px 8px; font-size: 0.7rem;">Dark</button>
                 </div>
                 <div class="setting-row">
-                    <span>Sound</span>
+                    <label for="check-sound">Sound</label>
                     <input type="checkbox" id="check-sound" checked>
                 </div>
                 <div class="setting-row">
-                    <span>Haptics</span>
+                    <label for="check-haptic">Haptics</label>
                     <input type="checkbox" id="check-haptic" checked>
                 </div>
                 <div class="setting-row">
-                    <span>Gravity</span>
+                    <label for="range-gravity">Gravity</label>
                     <input type="range" id="range-gravity" min="0.1" max="1.5" step="0.1" value="0.5">
                 </div>
                 <div class="setting-row">
-                    <span>Bounce</span>
+                    <label for="range-bounce">Bounce</label>
                     <input type="range" id="range-bounce" min="0.1" max="0.9" step="0.1" value="0.7">
                 </div>
                 <div class="setting-row">
-                    <span>Size</span>
+                    <label for="range-size">Size</label>
                     <input type="range" id="range-size" min="10" max="100" step="5" value="40">
                 </div>
             </div>
         </div>
 
         <div class="footer-hint">
-            Tap or Press Space to spawn • Right-click (no menu)
+            Tap or press Space to spawn
         </div>
     </div>
 
@@ -560,13 +563,14 @@
         });
 
         document.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0 || !e.isPrimary) return;
             if (e.target.closest('.ui-layer') && !e.target.closest('#playground')) return;
             spawnBall(e.clientX, e.clientY);
         });
 
-        document.addEventListener('contextmenu', (e) => e.preventDefault());
 
         document.addEventListener('keydown', (e) => {
+            if (e.target.closest('button, a, input, select, textarea')) return;
             if (e.code === 'Space' || e.code === 'Enter') {
                 e.preventDefault();
                 spawnBall(state.width / 2, 50);
@@ -614,14 +618,6 @@
         }
 
         // Button Event Handlers
-        document.getElementById('btn-back').addEventListener('click', () => {
-            if(window.history.length > 1) {
-                window.history.back();
-            } else {
-                console.log("No history to go back to.");
-            }
-        });
-
         document.getElementById('btn-settings').addEventListener('click', (e) => {
             e.stopPropagation();
             settingsPanel.classList.toggle('open');

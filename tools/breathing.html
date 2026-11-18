@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="A lightweight, privacy-focused breathing tool for calmspaces.">
     <meta name="theme-color" content="#0f172a">
     <title>CalmBreath</title>
@@ -70,6 +70,8 @@
         }
         button:hover { background: rgba(255,255,255,0.05); color: var(--text-main); }
         button:active { transform: scale(0.96); }
+        #btn-browser-back { display: inline-flex; padding: 10px; color: var(--primary); }
+        #return-focus a { color: var(--text-main); }
 
         .btn-main {
             background: var(--text-main); color: var(--bg-dark);
@@ -172,6 +174,10 @@
             margin-top: 20px; opacity: 0.7; max-width: 300px;
         }
     </style>
+    <link rel="manifest" href="../manifest.webmanifest">
+    <link rel="icon" href="../assets/icon-192.png">
+    <link rel="stylesheet" href="../assets/accessibility.css">
+    <script type="module" src="../assets/shared.js"></script>
 </head>
 <body>
 
@@ -180,9 +186,9 @@
 
     <div id="app">
         <header id="main-header">
-            <button id="btn-browser-back" aria-label="Go to Previous Page">
+            <a id="btn-browser-back" href="../index.html" aria-label="CalmSpace home">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-            </button>
+            </a>
             
             <h1>CalmBreath</h1>
             
@@ -201,17 +207,18 @@
                     Sit comfortably. Breathe gently.
                 </p>
                 <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-bottom: 20px;">
-                    <button class="btn-preset" data-mode="calm">Calm (4-4-4)</button>
-                    <button class="btn-preset" data-mode="focus">Box (4-4-4-4)</button>
-                    <button class="btn-preset" data-mode="sleep">Sleep (4-7-8)</button>
+                    <button class="btn-preset" data-mode="calm" aria-pressed="false">Calm (4-4-4)</button>
+                    <button class="btn-preset" data-mode="focus" aria-pressed="false">Box (4-4-4-4)</button>
+                    <button class="btn-preset" data-mode="sleep" aria-pressed="false">Sleep (4-7-8)</button>
                 </div>
                 <button id="btn-start" class="btn-main">Begin Session</button>
+                <p id="return-focus" hidden><a href="focus.html">Return to focus room</a></p>
             </div>
             <p class="safety-note">Consult a professional before deep breathing if you have respiratory conditions.</p>
         </div>
 
-        <div id="screen-active" class="screen">
-            <button id="btn-back-session" style="position: absolute; top: 15px; left: 0; z-index: 30;" aria-label="Go Back">
+        <div id="screen-active" class="screen" inert>
+            <button id="btn-back-session" style="position: absolute; top: 15px; left: 0; z-index: 30;" aria-label="Back to breathing setup">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
             </button>
 
@@ -223,9 +230,9 @@
             </div>
             
             <footer>
-                <div class="status-bar" id="timer-display">00:00</div>
+                <div class="status-bar" id="timer-display" role="timer">00:00</div>
                 <div style="display:flex; gap:20px;">
-                    <button id="btn-pause" aria-label="Pause or Resume">
+                    <button id="btn-pause" aria-label="Pause breathing">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
                     </button>
                     <button id="btn-stop" aria-label="End Session">
@@ -236,9 +243,9 @@
         </div>
     </div>
 
-    <div id="modal-settings" class="overlay">
-        <div class="modal">
-            <h2 style="margin-top:0">Settings</h2>
+    <div id="modal-settings" class="overlay" inert>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-heading">
+            <h2 id="settings-heading" style="margin-top:0">Settings</h2>
             
             <div class="setting-row">
                 <label for="sel-theme">Theme</label>
@@ -316,8 +323,7 @@
                 stop: document.getElementById('btn-stop'),
                 settings: document.getElementById('btn-settings'),
                 closeSettings: document.getElementById('btn-close-settings'),
-                backSession: document.getElementById('btn-back-session'),
-                browserBack: document.getElementById('btn-browser-back') // NEW
+                backSession: document.getElementById('btn-back-session')
             },
             modal: document.getElementById('modal-settings'),
             live: document.getElementById('live-announcer'),
@@ -332,6 +338,7 @@
             init: function() {
                 if (this.ctx) return;
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
                 this.ctx = new AudioContext();
                 this.generateBuffers();
             },
@@ -449,6 +456,7 @@
         let accumulator = 0;
         let orbScale = 1;
         let bloomOpacity = 0;
+        const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
         function updatePhysics(dt) {
             if (!state.isRunning || state.isPaused) return;
@@ -465,6 +473,10 @@
             } else if (state.phase === 'hold1' && state.phaseTime >= mode.hold1) {
                 transitionPhase('exhale');
             } else if (state.phase === 'exhale' && state.phaseTime >= mode.exhale) {
+                if (state.totalTime >= state.targetDuration) {
+                    endSession();
+                    return;
+                }
                 transitionPhase(mode.hold2 > 0 ? 'hold2' : 'inhale');
             } else if (state.phase === 'hold2' && state.phaseTime >= mode.hold2) {
                 transitionPhase('inhale');
@@ -489,11 +501,7 @@
                 bloomOpacity = 0;
             }
 
-            particles.update();
-
-            if (state.totalTime >= state.targetDuration && state.phase === 'exhale' && progress >= 0.99) {
-                endSession();
-            }
+            if (!reducedMotion.matches) particles.update();
 
             state.needsPaint = true;
         }
@@ -542,15 +550,16 @@
         }
 
         function draw() {
-            dom.orb.style.transform = `scale(${orbScale.toFixed(3)}) translateZ(0)`;
-            dom.bloom.style.opacity = bloomOpacity.toFixed(2);
+            dom.orb.style.transform = reducedMotion.matches ? '' : `scale(${orbScale.toFixed(3)}) translateZ(0)`;
+            dom.bloom.style.opacity = reducedMotion.matches ? '0' : bloomOpacity.toFixed(2);
             
             const remaining = Math.max(0, state.targetDuration - state.totalTime);
             const m = Math.floor(remaining / 60).toString().padStart(2, '0');
             const s = Math.floor(remaining % 60).toString().padStart(2, '0');
             dom.timer.textContent = `${m}:${s}`;
 
-            particles.draw();
+            dom.particleLayer.hidden = reducedMotion.matches;
+            if (!reducedMotion.matches) particles.draw();
         }
 
         // --- 5. HELPERS ---
@@ -565,9 +574,12 @@
         }
 
         function startSession() {
+            if (state.isRunning) return;
+            const duration = document.getElementById('inp-duration');
+            if (!duration.checkValidity()) duration.value = 5;
             audio.init();
             
-            state.targetDuration = parseInt(document.getElementById('inp-duration').value) * 60;
+            state.targetDuration = (duration.valueAsNumber || 5) * 60;
             if (state.mode === 'micro') state.targetDuration = 60;
 
             state.totalTime = 0;
@@ -581,35 +593,41 @@
             // Hide header during session for focus
             dom.header.style.opacity = '0';
             dom.header.style.pointerEvents = 'none';
+            dom.header.inert = true;
+            dom.screens.landing.inert = true;
+            dom.screens.active.inert = false;
 
             dom.screens.landing.classList.remove('active');
             dom.screens.active.classList.add('active');
+            dom.buttons.pause.setAttribute('aria-label', 'Pause breathing');
             dom.buttons.pause.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
             
             audio.play('bell', 1.0);
+            dom.buttons.pause.focus();
+            state.needsPaint = true;
         }
 
         function endSession() {
+            if (!state.isRunning) return;
             state.isRunning = false;
             audio.play('bell', 0.8);
             announce("Session complete.");
-            
-            setTimeout(() => {
-                dom.screens.active.classList.remove('active');
-                dom.screens.landing.classList.add('active');
-                
-                // Show header again
-                dom.header.style.opacity = '1';
-                dom.header.style.pointerEvents = 'auto';
-
-                dom.textGuide.textContent = "Ready";
-                particles.pool.forEach(p => { p.active = false; p.el.style.opacity = 0; });
-            }, 500);
+            dom.screens.active.classList.remove('active');
+            dom.screens.landing.classList.add('active');
+            dom.screens.active.inert = true;
+            dom.screens.landing.inert = false;
+            dom.header.inert = false;
+            dom.header.style.opacity = '1';
+            dom.header.style.pointerEvents = 'auto';
+            dom.textGuide.textContent = "Ready";
+            particles.pool.forEach(p => { p.active = false; p.el.style.opacity = 0; });
+            dom.buttons.start.focus();
         }
 
         function togglePause() {
             if (!state.isRunning) return;
             state.isPaused = !state.isPaused;
+            dom.buttons.pause.setAttribute('aria-label', state.isPaused ? 'Resume breathing' : 'Pause breathing');
             if (state.isPaused) {
                 announce("Paused");
                 dom.buttons.pause.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
@@ -623,7 +641,10 @@
         
         document.querySelectorAll('.btn-preset').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.btn-preset').forEach(b => b.style.background = 'rgba(255,255,255,0.05)');
+                document.querySelectorAll('.btn-preset').forEach(b => {
+                    b.style.background = 'rgba(255,255,255,0.05)';
+                    b.setAttribute('aria-pressed', String(b === btn));
+                });
                 e.target.style.background = 'var(--accent)';
                 e.target.style.color = 'var(--bg-dark)';
                 state.mode = e.target.dataset.mode;
@@ -636,21 +657,31 @@
         dom.buttons.stop.addEventListener('click', endSession);
         dom.buttons.backSession.addEventListener('click', endSession);
         
-        // NEW: Browser Back Listener
-        dom.buttons.browserBack.addEventListener('click', () => {
-            window.history.back();
-        });
+        if (new URLSearchParams(location.search).get('from') === 'focus') {
+            document.getElementById('return-focus').hidden = false;
+        }
 
-        dom.buttons.settings.addEventListener('click', () => dom.modal.classList.add('open'));
-        dom.buttons.closeSettings.addEventListener('click', () => {
-            dom.modal.classList.remove('open');
-            localStorage.setItem('calmbreath_settings', JSON.stringify({
-                theme: state.theme,
-                haptics: state.haptics,
-                volume: state.volume,
-                duration: document.getElementById('inp-duration').value
-            }));
+        dom.buttons.settings.addEventListener('click', () => {
+            dom.modal.inert = false;
+            document.getElementById('app').inert = true;
+            dom.modal.classList.add('open');
+            document.getElementById('sel-theme').focus();
         });
+        function closeSettings() {
+            dom.modal.classList.remove('open');
+            dom.modal.inert = true;
+            document.getElementById('app').inert = false;
+            dom.buttons.settings.focus();
+            try {
+                localStorage.setItem('calmbreath_settings', JSON.stringify({
+                    theme: state.theme,
+                    haptics: state.haptics,
+                    volume: state.volume,
+                    duration: document.getElementById('inp-duration').value
+                }));
+            } catch { /* Settings still apply for this visit. */ }
+        }
+        dom.buttons.closeSettings.addEventListener('click', closeSettings);
 
         document.getElementById('sel-theme').addEventListener('change', (e) => {
             state.theme = e.target.value;
@@ -665,7 +696,8 @@
             state.haptics = e.target.checked;
         });
 
-        const saved = JSON.parse(localStorage.getItem('calmbreath_settings'));
+        let saved;
+        try { saved = JSON.parse(localStorage.getItem('calmbreath_settings')); } catch { /* Use defaults. */ }
         if (saved) {
             state.theme = saved.theme || 'dark';
             document.documentElement.setAttribute('data-theme', state.theme);
@@ -681,27 +713,27 @@
         }
 
         document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
+            if (e.code === 'Space' && e.target === document.body && dom.modal.inert && !e.repeat) {
+                e.preventDefault();
                 if (state.isRunning) togglePause();
                 else startSession();
             }
             if (e.code === 'Escape') {
-                if(dom.modal.classList.contains('open')) dom.modal.classList.remove('open');
+                if (!dom.modal.inert) closeSettings();
                 else if(state.isRunning) endSession();
             }
         });
 
         particles.init();
+        reducedMotion.addEventListener('change', draw);
         requestAnimationFrame(loop);
 
     </script>
-    <title>Disable Right Click</title>
-    <script>
-        document.addEventListener("contextmenu", function(event) {
-            event.preventDefault();   // Disable right-click menu
-        });
-    </script>
 
+    <link rel="manifest" href="../manifest.webmanifest">
+    <link rel="icon" href="../assets/icon-192.png">
+    <link rel="stylesheet" href="../assets/accessibility.css">
+    <script type="module" src="../assets/shared.js"></script>
 </head>
 <body>
 </body>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Draw It | Stress Relief</title>
     <style>
         /* --- CSS VARIABLES & RESET --- */
@@ -39,7 +39,7 @@
         }
 
         /* --- CANVAS LAYERS --- */
-        #drawCanvas { position: absolute; top: 0; left: 0; z-index: 1; }
+        #drawCanvas { position: absolute; top: 0; left: 0; z-index: 1; touch-action: pinch-zoom; }
         #fxCanvas { position: absolute; top: 0; left: 0; z-index: 2; pointer-events: none; }
 
         /* --- UI CONTAINER --- */
@@ -147,6 +147,10 @@
             font-size: 12px; opacity: 0.5; pointer-events: none;
         }
     </style>
+    <link rel="manifest" href="../manifest.webmanifest">
+    <link rel="icon" href="../assets/icon-192.png">
+    <link rel="stylesheet" href="../assets/accessibility.css">
+    <script type="module" src="../assets/shared.js"></script>
 </head>
 <body>
 
@@ -155,15 +159,15 @@
     <canvas id="fxCanvas"></canvas>
 
     <div id="ui-layer">
-        <a href="../index.html" class="glass-panel top-left-nav">Back</a>
+        <a href="../index.html" class="glass-panel top-left-nav">Home</a>
 
         <div class="glass-panel settings-bar">
             <div class="setting-group">
-                <span class="setting-label">Sym: <span id="sym-val">1</span>x</span>
+                <label class="setting-label" for="symmetryRange">Symmetry: <span id="sym-val">1</span>x</label>
                 <input type="range" id="symmetryRange" min="1" max="12" value="1" step="1">
             </div>
             <div class="setting-group">
-                <span class="setting-label">Size</span>
+                <label class="setting-label" for="sizeRange">Size</label>
                 <input type="range" id="sizeRange" min="2" max="60" value="8">
             </div>
             <div class="divider"></div>
@@ -311,6 +315,8 @@
         };
 
         const particles = [];
+        const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+        let effectsFrame;
 
         function resize() {
             let temp;
@@ -343,22 +349,16 @@
             }
         }
 
-        function getPointerPos(e) {
-            if (e.touches) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            return { x: e.clientX, y: e.clientY };
+        function getPointerPos(event) {
+            const rect = canvas.getBoundingClientRect();
+            return { x: event.clientX - rect.left, y: event.clientY - rect.top };
         }
 
-        function isOverUI(e) {
-            if (e.target.closest('.glass-panel')) return true;
-            if (e.target.closest('.switch')) return true;
-            if (['BUTTON','INPUT','A'].includes(e.target.tagName)) return true;
-            return false;
-        }
-
+        let activePointer;
         function startDrawing(e) {
-            if (isOverUI(e)) return;
-            
-            e.preventDefault();
+            if (!e.isPrimary || e.button !== 0 || activePointer !== undefined) return;
+            activePointer = e.pointerId;
+            canvas.setPointerCapture(activePointer);
             // WAKE UP AUDIO
             AudioEngine.wakeUp();
 
@@ -370,21 +370,19 @@
             if (state.historyIndex === -1 && state.history.length === 0) saveState();
         }
 
-        function stopDrawing() {
-            if (state.isDrawing) {
-                state.isDrawing = false;
-                saveState();
-                AudioEngine.stop();
-            }
+        function stopDrawing(event) {
+            if (event.pointerId !== activePointer) return;
+            activePointer = undefined;
+            state.isDrawing = false;
+            saveState();
+            AudioEngine.stop();
         }
 
         function draw(e) {
+            if (e.pointerId !== activePointer) return;
             const pos = getPointerPos(e);
-            cursor.style.left = pos.x + 'px';
-            cursor.style.top = pos.y + 'px';
-            
-            if (!state.isDrawing) return;
-            e.preventDefault();
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
 
             // Calculate Velocity
             const dist = Math.hypot(pos.x - state.lastPoint.x, pos.y - state.lastPoint.y);
@@ -457,12 +455,11 @@
         }
 
         // Listeners
-        window.addEventListener('mousedown', startDrawing);
-        window.addEventListener('mousemove', draw);
-        window.addEventListener('mouseup', stopDrawing);
-        window.addEventListener('touchstart', startDrawing, {passive: false});
-        window.addEventListener('touchmove', draw, {passive: false});
-        window.addEventListener('touchend', stopDrawing);
+        canvas.addEventListener('pointerdown', startDrawing);
+        canvas.addEventListener('pointermove', draw);
+        canvas.addEventListener('pointerup', stopDrawing);
+        canvas.addEventListener('pointercancel', stopDrawing);
+        canvas.addEventListener('lostpointercapture', stopDrawing);
 
         document.getElementById('symmetryRange').addEventListener('input', (e) => {
             state.symmetry = parseInt(e.target.value);
@@ -544,20 +541,22 @@
         }
 
         function spawnParticles(x, y, color) {
+            if (reducedMotion.matches) return;
             for(let i=0; i<3; i++) particles.push(new Particle(x, y, color));
+            effectsFrame ??= requestAnimationFrame(animate);
         }
 
         function animate() {
             fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+            if (reducedMotion.matches) particles.length = 0;
             for (let i = particles.length - 1; i >= 0; i--) {
                 const p = particles[i];
                 p.update();
                 p.draw(fxCtx);
                 if (p.life <= 0) particles.splice(i, 1);
             }
-            requestAnimationFrame(animate);
+            effectsFrame = particles.length ? requestAnimationFrame(animate) : undefined;
         }
-        animate();
 
         document.body.addEventListener('mousemove', (e) => {
             if(!state.isDrawing) {
@@ -566,13 +565,11 @@
             }
         });
     </script>
-    <title>Disable Right Click</title>
-    <script>
-        document.addEventListener("contextmenu", function(event) {
-            event.preventDefault();   // Disable right-click menu
-        });
-    </script>
 
+    <link rel="manifest" href="../manifest.webmanifest">
+    <link rel="icon" href="../assets/icon-192.png">
+    <link rel="stylesheet" href="../assets/accessibility.css">
+    <script type="module" src="../assets/shared.js"></script>
 </head>
 <body>
     

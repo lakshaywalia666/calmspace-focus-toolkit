@@ -2,9 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Neon Defender Deluxe</title>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     
     <style>
         /* --- RETRO DARK THEME --- */
@@ -24,11 +23,10 @@
             color: #fff;
             height: 100vh;
             overflow: hidden;
-            font-family: 'Press Start 2P', cursive;
+            font-family: "Courier New", monospace;
             display: flex;
             flex-direction: column;
             align-items: center;
-            touch-action: none;
             cursor: none; 
         }
 
@@ -71,7 +69,7 @@
 
         .mode-container { display: flex; gap: 15px; margin-bottom: 20px; }
         .btn-mode {
-            background: transparent; font-family: 'Press Start 2P', cursive; font-size: 0.9rem;
+            background: transparent; font-family: "Courier New", monospace; font-size: 0.9rem;
             padding: 15px 20px; border: 2px solid #555; color: #888; cursor: pointer; text-transform: uppercase; transition: 0.2s;
         }
         .btn-mode:hover { transform: scale(1.05); }
@@ -82,7 +80,7 @@
         .settings-row { display: flex; gap: 20px; margin-top: 10px; }
         .toggle-btn {
             background: transparent; border: 2px solid #666; color: #666; padding: 10px;
-            cursor: pointer; font-family: 'Press Start 2P', cursive; font-size: 0.7rem;
+            cursor: pointer; font-family: "Courier New", monospace; font-size: 0.7rem;
             display: flex; align-items: center; gap: 8px; transition: 0.2s;
         }
         .toggle-btn.active { border-color: var(--neon-yellow); color: var(--neon-yellow); box-shadow: 0 0 10px var(--neon-yellow); }
@@ -95,10 +93,14 @@
         .controls-hint { color: #888; font-size: 0.7rem; text-align: center; line-height: 1.6; }
 
     </style>
+    <link rel="manifest" href="../manifest.webmanifest">
+    <link rel="icon" href="../assets/icon-192.png">
+    <link rel="stylesheet" href="../assets/accessibility.css">
+    <script type="module" src="../assets/shared.js"></script>
 </head>
 <body>
 
-    <a href="../index.html" class="back-home">← EXIT</a>
+    <a href="../index.html" class="back-home">← Home</a>
 
     <div id="ui-layer">
         <div class="header-bar">
@@ -117,17 +119,17 @@
             <button class="btn-mode hard" onclick="startGame('hard')">HARD</button>
         </div>
         <div class="settings-row">
-            <button class="toggle-btn active" id="btn-sound" onclick="toggleSetting('sound')">🔊 SND</button>
-            <button class="toggle-btn active" id="btn-haptic" onclick="toggleSetting('haptic')">📳 VIB</button>
+            <button class="toggle-btn active" id="btn-sound" aria-label="Sound" aria-pressed="true" onclick="toggleSetting('sound')">🔊 SND</button>
+            <button class="toggle-btn active" id="btn-haptic" aria-label="Vibration" aria-pressed="true" onclick="toggleSetting('haptic')">📳 VIB</button>
         </div>
-        <div class="controls-hint" style="margin-top: 20px;">MOVE: MOUSE / TOUCH<br>FIRE: CLICK / TAP</div>
+        <div class="controls-hint" style="margin-top: 20px;">MOVE: MOUSE / TOUCH / ARROWS<br>FIRE: CLICK / TAP / SPACE</div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
 
     <script>
-        window.addEventListener('contextmenu', e => e.preventDefault());
         const canvas = document.getElementById('gameCanvas');
+        const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
         const ctx = canvas.getContext('2d');
         let width, height;
         function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
@@ -155,6 +157,7 @@
         function toggleSetting(key) {
             settings[key] = !settings[key];
             const btn = document.getElementById('btn-' + key);
+            btn.setAttribute('aria-pressed', String(settings[key]));
             if(settings[key]) { btn.classList.add('active'); if(key === 'sound') playTone(400, 'sine', 0.1); if(key === 'haptic') vibrate(50); } 
             else { btn.classList.remove('active'); }
         }
@@ -174,9 +177,22 @@
         window.addEventListener('mousemove', e => { if(state.running) state.mouseX = e.clientX; });
         window.addEventListener('mousedown', () => { if(state.running) state.firing = true; });
         window.addEventListener('mouseup', () => { state.firing = false; });
-        window.addEventListener('touchmove', e => { if(state.running) { e.preventDefault(); state.mouseX = e.touches[0].clientX; } }, {passive: false});
-        window.addEventListener('touchstart', () => { if(state.running) state.firing = true; });
+        window.addEventListener('touchmove', e => { if(state.running && e.touches.length === 1) state.mouseX = e.touches[0].clientX; }, {passive: true});
+        canvas.addEventListener('touchstart', e => {
+            if (!state.running || e.touches.length !== 1) return;
+            state.mouseX = e.touches[0].clientX;
+            state.firing = true;
+        }, { passive: true });
         window.addEventListener('touchend', () => { state.firing = false; });
+        window.addEventListener('touchcancel', () => { state.firing = false; });
+        const keys = new Set();
+        window.addEventListener('keydown', e => {
+            if (!state.running || e.target.closest('a, button') || !['ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) return;
+            e.preventDefault();
+            keys.add(e.code);
+        });
+        window.addEventListener('keyup', e => keys.delete(e.code));
+        window.addEventListener('blur', () => { keys.clear(); state.firing = false; });
 
         // --- ENTITIES ---
         
@@ -223,7 +239,7 @@
                     }
                 }
 
-                if(state.firing && this.cooldown <= 0) {
+                if((state.firing || keys.has('Space')) && this.cooldown <= 0) {
                     // WEAPON TYPES
                     if(state.activePowerup === 'double') {
                         bullets.push(new Bullet(this.x - 15, this.y - this.h));
@@ -311,6 +327,8 @@
         for(let i=0; i<100; i++) stars.push({x: Math.random()*width, y: Math.random()*height, speed: Math.random()*2+0.5, size: Math.random()*2});
 
         function startGame(difficulty) {
+            keys.clear();
+            state.firing = false;
             initAudio(); state.difficulty = difficulty; state.running = true; state.score = 0; state.hp = 100;
             state.activePowerup = null; state.powerupTimer = 0;
             bullets = []; enemies = []; powerups = []; particles = [];
@@ -397,8 +415,10 @@
                             e.active = false; state.hp -= 25;
                             createExplosion(e.x, e.y, '#FF0000');
                             vibrate(200); updateUI();
-                            canvas.style.transform = `translate(${Math.random()*20-10}px, ${Math.random()*20-10}px)`;
-                            setTimeout(() => canvas.style.transform = 'none', 50);
+                            if (!reducedMotion.matches) {
+                                canvas.style.transform = `translate(${Math.random()*20-10}px, ${Math.random()*20-10}px)`;
+                                setTimeout(() => canvas.style.transform = 'none', 50);
+                            }
                         } else {
                             // Shield destroys enemy without damage
                             e.active = false;
@@ -410,14 +430,17 @@
             });
         }
 
-        function createExplosion(x, y, color) { for(let i=0; i<15; i++) particles.push(new Particle(x, y, color)); }
+        function createExplosion(x, y, color) { if (!reducedMotion.matches) for(let i=0; i<15; i++) particles.push(new Particle(x, y, color)); }
         function updateUI() { document.getElementById('score').innerText = state.score; document.getElementById('lives').innerText = state.hp; if(state.hp <= 0) gameOver(); }
 
         function loop() {
             if(!state.running) return;
             ctx.fillStyle = '#050508'; ctx.fillRect(0, 0, width, height);
 
-            ctx.fillStyle = '#fff'; stars.forEach(s => { s.y += s.speed; if(s.y > height) s.y = 0; ctx.globalAlpha = Math.random() * 0.5 + 0.3; ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill(); }); ctx.globalAlpha = 1.0;
+            ctx.fillStyle = '#fff'; if (!reducedMotion.matches) stars.forEach(s => { s.y += s.speed; if(s.y > height) s.y = 0; ctx.globalAlpha = Math.random() * 0.5 + 0.3; ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill(); }); ctx.globalAlpha = 1.0;
+
+            const direction = Number(keys.has('ArrowRight')) - Number(keys.has('ArrowLeft'));
+            state.mouseX = Math.max(0, Math.min(width, state.mouseX + direction * 8));
 
             player.update(); player.draw();
             bullets = bullets.filter(b => b.active); bullets.forEach(b => { b.update(); b.draw(); });
